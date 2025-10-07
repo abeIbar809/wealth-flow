@@ -1,39 +1,56 @@
-import { Colors } from '@/src/constants/theme'
-import React from 'react'
-import { View,Text, StyleProp, ViewStyle, TextInput,Button } from 'react-native'
-import { Double } from 'react-native/Libraries/Types/CodegenTypes'
-import "@/global.css"
-import { useRouter } from 'expo-router'
+import "@/global.css";
+import { useRouter } from "expo-router";
+import React from "react";
+import { Button, Text, TextInput, TouchableOpacity, View, Image } from "react-native";
+import { StatusBar } from "expo-status-bar";
+import Ionicons from "@expo/vector-icons/Ionicons";
 
-
-
-export default function authentication()  {
-
-  const router = useRouter()
+export default function authentication() {
+  const router = useRouter();
 
   function onLoginAttemp() {
-    router.push("/(tabs)")
+    router.push("/(tabs)");
   }
 
-  function onSignUpPressed() { 
+  function onSignUpPressed() {}
 
-  }
+  function onForgotPassWordPressed() {}
 
   return (
-    <View className='flex-1 items-center align-middle justify-center pb-40 bg-white' >
-     <View className=' h-[300] w-2/3 bg-[#03BF62] rounded-md items-center justify-center'>
-      <Text className=' text-white font-bold text-xl'>Sign in to yout account</Text>
-       <View className=' justify-start flex-2 w-full '> 
-         <Text className=' text-white font-bold'> Email </Text>
-         <TextInput className=' h-[30] bg-w bg-opacity-25' placeholder='email'/>
-         <Text className=' text-white font-bold'> Password </Text>
-         <TextInput className=' h-[30] ' placeholder='password'/>
-       </View>
-       <View className=' justify-between flex flex-row' >
-        <Button title='Login' onPress={onLoginAttemp} />
-        <Button title='Signup' onPress={onSignUpPressed} />
-       </View>
+    // Mark Page
+    <>
+    <StatusBar style="light" />
+    <View className="flex-1 items-center align-middle justify-between pb-40 bg-[#03BF62]">
+      <Text className=" font-bold text-4xl text-white pt-40">WealthFlow</Text>
+      <View className=" h-2/3 w-4/5 bg-white rounded-[20] items-center justify-evenly">
+        <Text className=" font-bold text-3xl ">Sign in to your account </Text>
+        <View className=" w-full p-10 h-1/3 justify-between ">
+          <Text className="font-bold pb-3"> Email </Text>
+          <TextInput
+            className=" h-[40] bg-[#F4F6FA] rounded-[10] "
+            placeholder=" Email"
+          />
+          <Text className="font-bold pb-3 pt-3"> Password </Text>
+          <TextInput
+            className=" h-[40] bg-[#F4F6FA] rounded-[10] "
+            placeholder=" Password"
+          />
+          <TouchableOpacity onPress={onForgotPassWordPressed}>
+            <Text className=" text-blue-400 font-bold pb-3 pt-3">
+              Forgot password ?
+            </Text>
+          </TouchableOpacity>
+        </View>
+        <View className="w-full h-1/4 align-middle items-center justify-evenly">
+          <View className=" bg-[#03BF62] w-4/5 rounded-[20]">
+            <Button title="Login" color="white" onPress={onLoginAttemp} />
+          </View>
+          <View className="bg-[#03BF62] w-4/5 rounded-[20]">
+            <Button title="Signup" color="white" onPress={onSignUpPressed} />
+          </View>
+        </View>
       </View>
     </View>
-  )
+    </>
+  );
 }

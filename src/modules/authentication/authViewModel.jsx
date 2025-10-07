@@ -1,2 +1,0 @@
-// viewModels/useCounterViewModel.ts
-

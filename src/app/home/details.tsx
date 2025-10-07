@@ -1,4 +1,4 @@
-import ItemList from "@/src/components/itemList";
+import ItemList from "@/src/components/common/navigation/itemList";
 import React from "react";
 
 export default function Analytics() {
