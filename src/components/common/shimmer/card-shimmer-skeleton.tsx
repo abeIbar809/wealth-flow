@@ -10,15 +10,19 @@ export interface ShimmerSkeletionProps {
   height:number,
 }
 
-export function ShimmerSkeletion({children, ...props} : PropsWithChildren<ShimmerSkeletionProps>) : React.JSX.Element {
-  return (<>
-  { !props.isActive ? 
-   <> {children} </> : <>
-   <Animated.View entering={FadeIn.duration(1000)}>
-   <CardShimmer label="SHimmer" width={props.width} height={props.height}>
-   </CardShimmer>
-   </Animated.View>
-  </> 
-  }
-  </>);
+export function ShimmerSkeleton({
+  children,
+  ...props
+}: PropsWithChildren<ShimmerSkeletionProps>): React.JSX.Element {
+  return (!props.isActive) ? (<> {children} </>) : (
+    <>
+      <Animated.View entering={FadeIn.duration(1000)}>
+        <CardShimmer
+          label={"SHimmer"}
+          width={props.width}
+          height={props.height}
+        ></CardShimmer>
+      </Animated.View>
+    </>
+  )
 }

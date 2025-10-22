@@ -2,7 +2,7 @@ import React from "react";
 import { Text, View } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
 import Card from "../common/widgets/card";
-import { ShimmerSkeletion } from "../common/shimmer/card-shimmer-skeleton";
+import { ShimmerSkeleton } from "../common/shimmer/card-shimmer-skeleton";
 
 export interface CardBalanceProps {
   balance: number;
@@ -16,11 +16,8 @@ export default function CardBalanceComponent({
   ...props
 }: CardBalanceProps): React.JSX.Element {
   return (
-    <ShimmerSkeletion isActive={props.isLoading} width={300} height={200}>
-      <Animated.View
-        entering={FadeIn.duration(1000)}
-        className="w-full items-center"
-      >
+    //<ShimmerSkeleton isActive={props.isLoading} width={300} height={200}>
+      <Animated.View entering={FadeIn.duration(1000)} className="w-full items-center">
         <Card className="justify-evenly inset-shadow-xl ">
           <View className="h-1/3 w-full justify-center">
             <Text className="text-3xl text-white font-bold">Balance</Text>
@@ -43,6 +40,6 @@ export default function CardBalanceComponent({
           </View>
         </Card>
       </Animated.View>
-    </ShimmerSkeletion>
+    //</ShimmerSkeleton>
   );
 }

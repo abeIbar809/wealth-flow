@@ -12,7 +12,7 @@ export default function HeadingWithElement({...props}: PropsWithChildren<Heading
     return (
       <>
         <View className={twMerge(`flex flex-row w-full justify-between pl-10 pr-10 mt-7 mb-7`,props.classNameHeader)}>
-          <Text className={twMerge(`text-3xl font-bold color-[#2D2F43]"`,props.className)}>
+          <Text className={twMerge(`text-4xl font-bold color-[#2D2F43]"`,props.className)}>
             {props.heading}
           </Text>
           {props.children}
