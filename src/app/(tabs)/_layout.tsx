@@ -1,32 +1,24 @@
-import CustomNavBar from "@/src/components/common/navigation/navigation-bar";
+import CustomNavBar from "@/src/components/navigation/navigation-bar";
 import { Tabs } from "expo-router";
 import React from "react";
+import { StyleSheet } from 'react-native';
 
 export default function _layout() {
   return (
     <Tabs tabBar={(props) => <CustomNavBar {...props} />}>
-      <Tabs.Screen
-        name="index"
-        options={{
-          
-          title: "Home",
-          headerShown: true,
-          headerTitle: "WealthFlow",
-          headerStyle: {
-            backgroundColor: "#fff",
-          },
-          headerTitleAlign: "center",
-          headerTitleStyle: {
-            fontWeight: "bold",
-            fontSize: 25,
-            color: "#03BF62",
-          },
-        }}
-      />
-      <Tabs.Screen name="search" options={{ title: "Search" }} />
-      <Tabs.Screen name="analytics" options={{ title: "Analytics" }} />
-      <Tabs.Screen name="wallet" options={{ title: "Wallet" }} />
-      <Tabs.Screen name="profile" options={{ title: "Profile" }} />
+      <Tabs.Screen name="(home)" options={{title:"home",headerShadowVisible:false,headerTitle: "WealthFlow", headerTitleStyle: styles.headerStyle}}/>
+      <Tabs.Screen name="(bills)" options={{ title: "bills" }} />
+      <Tabs.Screen name="(forums)" options={{ title: "forums" }} />
+      <Tabs.Screen name="(investments)" options={{ title: "investments" }} />
+      <Tabs.Screen name="(planner)" options={{ title: "planner" }} />
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  headerStyle: { 
+    fontWeight: "bold",
+    fontSize: 25,
+    color: "#03BF62",
+  } 
+})

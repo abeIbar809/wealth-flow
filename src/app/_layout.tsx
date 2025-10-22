@@ -5,7 +5,9 @@ export default function Rootlayout() {
   return (
     <Stack>
       <Stack.Screen name="authentication"options={{headerShown:false}}/>
-      <Stack.Screen name="(tabs)" options={{headerShown:false}}/>
+      <Stack.Protected guard={true}>
+        <Stack.Screen name="(tabs)" options={{headerShown:false}}/>
+      </Stack.Protected>
     </Stack>
   );
 }

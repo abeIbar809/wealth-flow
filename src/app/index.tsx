@@ -1,5 +1,5 @@
 
-import { Redirect, useRouter } from "expo-router";
+import { Redirect } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { View } from "react-native";
 
@@ -11,7 +11,7 @@ export default function Start() {
   return (
       <View>
         {isAuth && <Redirect href="/authentication" />}
-        {!isAuth && <Redirect href="/(tabs)" />}
+        {!isAuth && <Redirect href="/(tabs)/(home)" />}
       </View>
   );
 }

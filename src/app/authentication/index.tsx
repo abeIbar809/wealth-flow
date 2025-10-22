@@ -9,7 +9,7 @@ export default function authentication() {
   const router = useRouter();
 
   function onLoginAttemp() {
-    router.push("/(tabs)");
+    router.push("/(tabs)/(home)");
   }
 
   function onSignUpPressed() {}
