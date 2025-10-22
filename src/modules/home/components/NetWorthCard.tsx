@@ -4,6 +4,7 @@ import { Pressable, Text, View } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
 import { ShimmerSkeleton } from '@/src/components/shimmer/card-shimmer-skeleton';
 import { LayoutShimmerSkeleton } from '@/src/components/shimmer/layout-shimmer-skeleton';
+import { useWindowDimensions } from 'react-native';
 
 export interface CardBalanceProps {
   balance: number;
@@ -18,13 +19,14 @@ export default function NetWorthCardComponent({
   ...props
 }: CardBalanceProps): React.JSX.Element {
   const [cardHeight,expandCardHeight] = useState(200)
+  const { width } = useWindowDimensions();
 
   const onCardPressed = async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
   }
 
   return (
-    <LayoutShimmerSkeleton isActive={props.isLoading} width={300} height={200}>
+    <ShimmerSkeleton isActive={props.isLoading} width={(4 / 5) * width} height={200}>
       <Animated.View entering={FadeIn.duration(1000)} className="w-full items-center">
         <Pressable className={`inset-shadow-xl w-3/4 pl-6 shadow-xl justify-center`} 
           style = {{ height: cardHeight, backgroundColor: "#03BF62", borderRadius: 18,}}
@@ -52,6 +54,6 @@ export default function NetWorthCardComponent({
         </Pressable>
 
       </Animated.View>
-    </LayoutShimmerSkeleton>
+    </ShimmerSkeleton>
   );
 }

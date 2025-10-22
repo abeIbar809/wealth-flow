@@ -9,7 +9,7 @@ export interface GroupedPageSectionProps {
   
 export default function GroupedPageSection({...props}: PropsWithChildren<GroupedPageSectionProps>): React.JSX.Element {
     return (
-      <View className={twMerge(`items-center`, props.className)}>
+      <View className={twMerge(`items-center w-full`, props.className)}>
         {props.children}
       </View>
     );

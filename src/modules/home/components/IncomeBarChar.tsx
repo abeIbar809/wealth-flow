@@ -4,6 +4,7 @@ import Animated, { FadeIn } from "react-native-reanimated";
 import HapticButton from "../../../components/navigation/haptic-button";
 import { ShimmerSkeleton } from "@/src/components/shimmer/card-shimmer-skeleton";
 import { useEffect, useState } from "react";
+import { useWindowDimensions } from 'react-native';
 
 interface BarChartComponentProps {
   data: barDataItem[];
@@ -20,9 +21,11 @@ export default function IncomeBarChartComponent({
   ...props
 }: BarChartComponentProps) {
 
+  const { width } = useWindowDimensions();
+
   
   return (
-    <ShimmerSkeleton height={200} width={350} isActive={props.isLoading}>
+    <ShimmerSkeleton height={230} width={(4 / 5) * width} isActive={props.isLoading}>
     <Animated.View entering={FadeIn.duration(1000)} className="w-full items-center">
       <View className=" rounded-[14] w-4/5 h-[230] items-center justify-center ">
         <BarChart

@@ -14,6 +14,7 @@ import BottomSheet from "@gorhom/bottom-sheet";
 import { useRouter } from "expo-router";
 import {create, StoreApi, UseBoundStore} from "zustand"
 import { store } from "expo-router/build/global-state/router-store";
+import { StatusBar } from "expo-status-bar";
 
 
 const sleep = (ms:number) => {
@@ -246,7 +247,7 @@ function useHomeModel(): IUseHomeModel {
   };
 
   const onSettingsPressed = () => {
-    router.navigate("/(modals)/settings")
+    router.navigate("/(tabs)/(home)/settings")
     
   };
 
@@ -271,6 +272,7 @@ export default function Home() {
   
   return (
     <>
+        <StatusBar style="dark" />
         <ScrollView
           nestedScrollEnabled={true}
           style={{ flex: 1 }}

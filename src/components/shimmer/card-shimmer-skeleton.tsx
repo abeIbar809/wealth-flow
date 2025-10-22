@@ -22,8 +22,6 @@ export function ShimmerSkeleton({
           label={"SHimmer"}
           width={props.width}
           height={props.height}
-          backgroundColor="#F4F6FA"
-          highlightColor="#Ff"
         ></CardShimmer>
       </Animated.View>}
   </>
