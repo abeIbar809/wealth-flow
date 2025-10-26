@@ -4,6 +4,7 @@
  */
 
 import { Platform } from 'react-native';
+import { vars, useColorScheme } from 'nativewind'
 
 const tintColorLight = '#0a7ea4';
 const tintColorDark = '#fff';
@@ -51,3 +52,17 @@ export const Fonts = Platform.select({
     mono: "SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
   },
 });
+
+export const themes = {
+  brand: {
+    'light': vars({
+      '--color-primary': '#1628BD',
+      '--color-secondary': 'white',
+      '--color-text-primary': 'white'
+    }),
+    'dark': vars({
+      '--color-primary': 'white',
+      '--color-secondary': 'dark'
+    })
+  },
+}

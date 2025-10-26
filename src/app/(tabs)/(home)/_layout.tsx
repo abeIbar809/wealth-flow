@@ -7,6 +7,7 @@ export default function Homelayout() {
     <Stack>
       <Stack.Screen name="index" options={{headerShown: false} }/>
       <Stack.Screen name="settings" options={{headerShown: false, presentation:"modal"} }/>
+      <Stack.Screen name="accounts" options={{headerShown: false, presentation:"modal"} }/>
     </Stack>
   );
 }

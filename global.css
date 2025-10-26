@@ -2,3 +2,33 @@
 @tailwind components;
 @tailwind utilities;
 
+@import 'tailwindcss';
+
+
+
+:root {
+  --primary-color: 247 147 34;
+  --text-color: 33 33 33;
+  --success-color: 0 200 81;
+  --info-color: 51 181 229;
+  --warn-color: 255 187 51;
+  --error-color: 254 78 78;
+}
+
+:root[class~='dark'] {
+  --primary-color: 247 147 34;
+  --text-color: 33 33 33;
+  --success-color: 0 200 81;
+  --info-color: 51 181 229;
+  --warn-color: 255 187 51;
+  --error-color: 254 78 78;
+}
+
+@theme inline {
+  --color-primary: rgb(var(--primary-color));
+  --color-text: rgb(var(--text-color));
+  --color-success: rgb(var(--success-color));
+  --color-info: rgb(var(--info-color));
+  --color-warn: rgb(var(--warn-color));
+  --color-error: rgb(var(--error-color));
+}

@@ -2,7 +2,9 @@ import AntDesign from "@expo/vector-icons/AntDesign";
 import Feather from "@expo/vector-icons/Feather";
 import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { TouchableWithoutFeedback } from "@gorhom/bottom-sheet";
 import { BottomTabBarProps } from "@react-navigation/bottom-tabs";
+import { use, useEffect, useRef, useState } from "react";
 import { StyleSheet, TouchableOpacity, View } from "react-native";
 import Animated, {
     FadeIn,
@@ -21,6 +23,7 @@ const CustomNavBar: React.FC<BottomTabBarProps> = ({
   descriptors,
   navigation,
 }) => {
+ 
   return (
     <View style={styles.container}>
       {state.routes.map((route, index) => {
@@ -75,6 +78,7 @@ const CustomNavBar: React.FC<BottomTabBarProps> = ({
         );
       })}
     </View>
+    
   );
 
   function getIconByRouteName(routeName: string, color: string) {
