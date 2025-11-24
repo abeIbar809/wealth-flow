@@ -2,9 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-@import 'tailwindcss';
-
-
+@import "tailwindcss";
 
 :root {
   --primary-color: 247 147 34;
@@ -15,7 +13,7 @@
   --error-color: 254 78 78;
 }
 
-:root[class~='dark'] {
+:root[class~="dark"] {
   --primary-color: 247 147 34;
   --text-color: 33 33 33;
   --success-color: 0 200 81;

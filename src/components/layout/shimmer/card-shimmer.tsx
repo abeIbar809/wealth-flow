@@ -17,7 +17,7 @@ export const CardShimmer = ({
   backgroundColor?: GradientShimmerPropsType['backgroundColor'];
   highlightColor?: GradientShimmerPropsType['highlightColor'];
 }) => {
-  const {width: windowWidth} = useWindowDimensions();
+  const { width: windowWidth } = useWindowDimensions();
   const horizontalMargin = 16;
   const shimmerWidth = width ?? windowWidth - horizontalMargin * 2;
   return (

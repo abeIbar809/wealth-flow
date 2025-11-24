@@ -1,5 +1,5 @@
 import { PropsWithChildren } from "react";
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
 import { ClassNameValue, twMerge } from "tailwind-merge";
 
 export interface CardProps {
@@ -9,15 +9,14 @@ export interface CardProps {
 export default function Card({ ...props }: PropsWithChildren<CardProps>): React.JSX.Element {
   return (
     <>
-      <Pressable
+      <View
         className={twMerge(
-          `w-3/4 h-[200] bg-[#03BF62] rounded-[18] pl-6 shadow-xl`,
+          `w-5/6 h-[200] rounded-[18] shadow-xl items-center`,
           props.className
         )}
-        onPress={()=>console.log("her")}
       >
         {props.children}
-      </Pressable>
+      </View>
     </>
   );
 }

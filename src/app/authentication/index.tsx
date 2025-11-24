@@ -1,73 +1,74 @@
 import "@/global.css";
-import GroupedPageSection from "@/src/components/layout/grouped-page-section";
-import { ThemedText } from "@/src/components/theme/themed-text";
+import { AppText } from "@/src/components/common/app-text";
+import Card from "@/src/components/common/card";
+import { Section } from "@/src/components/layout/grouped-page-section";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React from "react";
-import { Text, TextInput, TouchableOpacity, View } from "react-native";
+import { TextInput, TouchableOpacity, View } from "react-native";
 
 export default function AuthIndex() {
   const router = useRouter();
 
-  function onLoginAttemp() {
-    router.push("/(tabs)/(home)");
-  }
-
+  // Navigate to signup page 
   function onSignUpPressed() {
     router.push("/authentication/signup")
   }
 
-  function onForgotPassWordPressed() {}
+  {/* TODO: Functions here will interact with GLOBAL auth state. Need an Auth context or Zuestand Store */ }
+  {/* TODO: Handle login */ }
+  function onLoginAttemp() {
+    router.push("/(tabs)/(home)");
+  }
+
+  {/* TODO: Implement forgot password. Maybe navigate to new page, open bottomsheet, or pagenation...etc ? */ }
+  function onForgotPassWordPressed() {
+
+  }
 
   return (
-    // Mark Pager
     <>
-    <StatusBar style="light" />
+      <StatusBar style="light" />
+      <View className="flex-1 items-center align-middle justify-evenly bg-[#03BF62]">
 
-    
-    <View className="flex-1 items-center align-middle justify-evenly bg-[#03BF62]">
-      
-      <Text className=" font-bold text-4xl text-white">WealthFlow</Text>
+        <AppText type="title" className="text-white">WealthFlow</AppText>
 
-      <View className=" h-[500] w-4/5 bg-white rounded-[20] items-center justify-evenly">
+        <Card className=" h-[500] w-4/5 bg-white rounded-[20] items-center justify-evenly">
+          <AppText.SubTitle >Sign in to your account </AppText.SubTitle>
+          <Section className="items-center" >
 
-        <Text className=" font-bold text-3xl ">Sign in to your account </Text>
+            <View className=" items-start w-5/6 pb-3">
+              <AppText className="font-bold "> Email </AppText>
+            </View>
 
-        <GroupedPageSection className="items-center" > 
-          <View className=" items-start w-5/6 pb-3"> 
-            <Text className="font-bold "> Email </Text>
-          </View>
+            {/* TODO: Capture email input. Can use useRef for example */}
+            <TextInput className=" h-[40] bg-[#F4F6FA] rounded-[10] w-5/6 mb-2" placeholder=" Email" />
+            <View className=" items-start w-5/6 pb-3">
+              <AppText className="font-bold "> Password </AppText>
+            </View>
 
-          <TextInput className=" h-[40] bg-[#F4F6FA] rounded-[10] w-5/6 mb-2" placeholder=" Email"/>
-        
-          <View className=" items-start w-5/6 pb-3"> 
-            <Text className="font-bold "> Password </Text>
-          </View>
-          
-          <TextInput className=" h-[40] bg-[#F4F6FA] rounded-[10] w-5/6 mb-2" placeholder=" Password"/>
+            {/* TODO: Capture password input. Can use useRef for example */}
+            <TextInput className=" h-[40] bg-[#F4F6FA] rounded-[10] w-5/6 mb-2" placeholder=" Password" secureTextEntry />
 
-          <View className="items-start w-5/6"> 
-          <TouchableOpacity onPress={onForgotPassWordPressed}>
-            <Text className=" text-blue-400 font-bold pl-2">
-              Forgot password ?
-            </Text>
-          </TouchableOpacity>
-          </View>
-        </GroupedPageSection>
-        
-        <GroupedPageSection>
-          <TouchableOpacity className=" bg-[#03BF62] w-4/5 rounded-[20] h-[35] items-center justify-center mb-2" onPress={onLoginAttemp}>
-            <Text className="text-white font-bold text-xl" > Login </Text>
-            {/*<Button title="Login" onPress={onLoginAttemp} />*/}
-          </TouchableOpacity>
-          <TouchableOpacity className=" bg-[#03BF62] w-4/5 rounded-[20] h-[35] items-center justify-center" onPress={onSignUpPressed}>
-            <Text className="text-white font-bold text-xl" > Signup </Text>
-            {/*<Button title="Login" onPress={onLoginAttemp} />*/}
-          </TouchableOpacity>
-        </GroupedPageSection>
+            <View className="items-start w-5/6">
+              <TouchableOpacity onPress={onForgotPassWordPressed}>
+                <AppText.Caption className=" text-blue-400 font-bold pl-2">
+                  Forgot password ?
+                </AppText.Caption>
+              </TouchableOpacity>
+            </View>
+          </Section>
+          <Section>
+            <TouchableOpacity className=" bg-[#03BF62] w-4/5 rounded-[20] h-[35] items-center justify-center mb-2" onPress={onLoginAttemp}>
+              <AppText.Normal className="text-white font-medium" > Login</AppText.Normal>
+            </TouchableOpacity>
 
+            <TouchableOpacity className=" bg-[#03BF62] w-4/5 rounded-[20] h-[35] items-center justify-center" onPress={onSignUpPressed}>
+              <AppText.Normal className="text-white font-medium  " > Signup </AppText.Normal>
+            </TouchableOpacity>
+          </Section>
+        </Card>
       </View>
-    </View>
     </>
   );
 }

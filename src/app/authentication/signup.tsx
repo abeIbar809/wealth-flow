@@ -1,79 +1,78 @@
 import "@/global.css";
-import { useRouter } from "expo-router";
-import React from "react";
-import { Button, Text, TextInput, TouchableOpacity, View, Image, Pressable } from "react-native";
-import { StatusBar } from "expo-status-bar";
-import Ionicons from "@expo/vector-icons/Ionicons";
-import GroupedPageSection from "@/src/components/layout/grouped-page-section";
+import { AppText } from "@/src/components/common/app-text";
+import Card from "@/src/components/common/card";
+import { Section } from "@/src/components/layout/grouped-page-section";
 import HapticButton from "@/src/components/navigation/haptic-button";
-import LottieView from 'lottie-react-native';
-
-
+import Ionicons from "@expo/vector-icons/Ionicons";
+import { useRouter } from "expo-router";
+import { StatusBar } from "expo-status-bar";
+import React from "react";
+import { TextInput, TouchableOpacity, View } from "react-native";
 
 export default function SignUp() {
   const router = useRouter();
 
+  // Back to login page.
   function onBackPressed() {
     router.dismiss()
   }
 
-  function onNextPressed() { 
+  {/* TODO: Functions here will interact with GLOBAL auth state. Need an Auth context or Zuestand Store */ }
+  {/* TODO: Handle signup attemp  */ }
+  function onFinishSignupPressed() {
 
   }
 
   return (
     // Mark Page
     <>
-    <StatusBar style="light" />
-    <View className="flex-1 items-center align-middle justify-between bg-[#03BF62]">
-
-      <View className="justify-between flex-row pt-20 w-full pl-5 pr-5">
-        <HapticButton onPressed={onBackPressed}>
-          <Ionicons name="arrow-back-circle" size={30} color={"#FFF"} />
-        </HapticButton>
-        <Text className=" font-bold text-3xl text-white">Create  your Account 🚀</Text>
-      </View>  
-      
-      
-      <View className=" h-5/6 w-full bg-white rounded-[40] items-center justify-evenly">
-
-      <LottieView source={require('@/assets/lottie/Finance guru.json')} style={{width:100,height:100}}  autoPlay loop />
-
-        <GroupedPageSection className="items-center" > 
-
-          <View className=" items-start w-5/6 pb-3"> 
-            <Text className="font-bold"> Email </Text>
+      <StatusBar style="light" />
+      <View className="flex-1 items-center align-middle justify-between bg-[#03BF62]">
+        <Section>
+          <View className="justify-between flex-row pt-20 w-full pl-5 pr-5">
+            <HapticButton onPressed={onBackPressed}>
+              <Ionicons name="arrow-back-circle" size={30} color={"#FFF"} />
+            </HapticButton>
+            <AppText.SubTitle className=" font-bold text-3xl text-white">Create  your Account 🚀</AppText.SubTitle>
           </View>
-          <TextInput className=" h-[40] bg-[#F4F6FA] rounded-[10] w-5/6 mb-2" placeholder=" Email"/>
+        </Section>
 
-        
-          <View className=" items-start w-5/6 pb-3"> 
-            <Text className="font-bold "> Password </Text>
-          </View>
-          <TextInput className=" h-[40] bg-[#F4F6FA] rounded-[10] w-5/6 mb-2" placeholder=" Password"/>
+        <Card className="h-5/6 w-full bg-white rounded-[40] items-center justify-start">
 
-          <View className=" items-start w-5/6 pb-3"> 
-            <Text className="font-bold "> Retype password </Text>
-          </View>
-          <TextInput className=" h-[40] bg-[#F4F6FA] rounded-[10] w-5/6 mb-2" placeholder=" Password"/>
+          <Section>
+          </Section>
 
-          <View className=" items-start w-5/6 pb-3"> 
-            <Text className="font-bold "> Phone </Text>
-          </View>
-          <TextInput className=" h-[40] bg-[#F4F6FA] rounded-[10] w-5/6 mb-2" placeholder=" Password"/>
-        
+          <Section className="pt-10">
+            <View className=" items-start w-5/6 pb-3">
+              <AppText className="font-bold"> Email </AppText>
+            </View>
+            {/* TODO: Capture email input. Can use useRef for example */}
+            <TextInput className=" h-[40] bg-[#F4F6FA] rounded-[10] w-5/6 mb-2" placeholder=" Email" />
 
-        </GroupedPageSection>
-        
-        <GroupedPageSection>
-          <TouchableOpacity className=" bg- w-4/5 rounded-[20] h-[35] items-center justify-center" onPress={onNextPressed}>
-            <Text className="text-white font-bold text-xl" > Next </Text>
-            {/*<Button title="Login" onPress={onLoginAttemp} />*/}
-          </TouchableOpacity>
-        </GroupedPageSection>
+            <View className=" items-start w-5/6 pb-3">
+              <AppText className="font-bold "> Password </AppText>
+            </View>
+            {/* TODO: Capture password input. Can use useRef for example */}
+            <TextInput className=" h-[40] bg-[#F4F6FA] rounded-[10] w-5/6 mb-2" placeholder=" Password" secureTextEntry />
 
+            <View className=" items-start w-5/6 pb-3">
+              <AppText className="font-bold "> Retype password </AppText>
+            </View>
+            {/* TODO: Capture password input. Can use useRef for example */}
+            <TextInput className=" h-[40] bg-[#F4F6FA] rounded-[10] w-5/6 mb-2" placeholder=" Password" secureTextEntry />
+
+            <View className=" items-start w-5/6 pb-3">
+              <AppText className="font-bold "> Phone </AppText>
+            </View>
+            {/* TODO: Capture phone input. Can use useRef for example */}
+            <TextInput className=" h-[40] bg-[#F4F6FA] rounded-[10] w-5/6 mb-2" placeholder=" Phone" />
+
+            <TouchableOpacity className=" bg-[#03BF62] w-5/6 rounded-[20] h-[45] mt-8 items-center justify-center" onPress={onFinishSignupPressed}>
+              <AppText.Normal className="text-white font-medium  " > Continue </AppText.Normal>
+            </TouchableOpacity>
+          </Section>
+        </Card>
       </View>
-    </View>
     </>
   );
 }

@@ -4,10 +4,10 @@ import React, { PropsWithChildren } from "react";
 import { CardShimmer } from "./card-shimmer";
 
 export interface ShimmerSkeletionProps {
-  isActive:boolean
-  isDark?:boolean
-  width:number,
-  height:number,
+  isActive: boolean
+  isDark?: boolean
+  width: number,
+  height: number,
 }
 
 export function ShimmerSkeleton({
@@ -15,15 +15,15 @@ export function ShimmerSkeleton({
   ...props
 }: PropsWithChildren<ShimmerSkeletionProps>): React.JSX.Element {
   return (
-  <> 
-     {!props.isActive && <>{children}</>}
-     {props.isActive && <Animated.View entering={FadeIn.duration(1000)}>
+    <>
+      {!props.isActive && <>{children}</>}
+      {props.isActive && <Animated.View entering={FadeIn.duration(1000)}>
         <CardShimmer
           label={"SHimmer"}
           width={props.width}
           height={props.height}
         ></CardShimmer>
       </Animated.View>}
-  </>
-);
+    </>
+  );
 }
