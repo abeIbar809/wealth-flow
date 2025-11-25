@@ -11,10 +11,13 @@ export default function Rootlayout() {
 
   return (
     <Stack>
-      <Stack.Screen name="authentication" options={{ headerShown: false }} />
-      {/* Protected Routes. When guard is true these routes are open.*/}
-      <Stack.Protected guard={isAuth}>
+      {/* Protected Routes. When isAuth is true tabs page is Open.*/}
+      <Stack.Protected guard={!!isAuth}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      </Stack.Protected>
+      {/* Protected Routes. When isAuth is false authScreen is open.*/}
+      <Stack.Protected guard={!isAuth}>
+        <Stack.Screen name="authentication" options={{ headerShown: false }} />
       </Stack.Protected>
     </Stack>
   );
