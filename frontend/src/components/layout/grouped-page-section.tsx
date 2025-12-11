@@ -14,4 +14,3 @@ export default function GroupedPageSection({...props}: PropsWithChildren<Grouped
       </View>
     );
 }
-  
