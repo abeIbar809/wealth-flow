@@ -24,9 +24,9 @@ export default function _layout() {
     <Tabs tabBar={(props) => <CustomNavBar {...props} />}>
       <Tabs.Screen name="(home)" options={{header: (props) =>  (<TabsHeader {...props}/>)}}/>
       <Tabs.Screen name="(bills)" options={{header: (props) =>  (<TabsHeader {...props}/>)}}/>
-      <Tabs.Screen name="(forums)" options={{ title: "forums" }} />
-      <Tabs.Screen name="(investments)" options={{ title: "investments" }} />
-      <Tabs.Screen name="(planner)" options={{ title: "planner" }} />
+      <Tabs.Screen name="(forums)" options={{header: (props) =>  (<TabsHeader {...props}/>)}}/>
+      <Tabs.Screen name="(investments)" options={{header: (props) =>  (<TabsHeader {...props}/>)}}/>
+      <Tabs.Screen name="(planner)" options={{header: (props) =>  (<TabsHeader {...props}/>)}}/>
     </Tabs>
   );
 }
