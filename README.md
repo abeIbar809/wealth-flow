@@ -15,7 +15,7 @@
    ```
 
 3. Create a .env file in the frontend directory 
-   - In the file add: EXPO_PUBLIC_API_BASE_URL=http://<YOURIP>:9000
+   - In the file add: EXPO_PUBLIC_API_BASE_URL=http://YOUR_IP:9000
       * You can find your IP using "ipconfig" in your command prompt
 
 In the output, you'll find options to open the app in a
