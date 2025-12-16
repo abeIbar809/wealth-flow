@@ -1,5 +1,6 @@
-import { ScrollView, View,Text } from "react-native";
-import Animated,{FadeIn} from "react-native-reanimated";
+import { AppText } from "@/src/components/common/app-text";
+import { ScrollView, View } from "react-native";
+import Animated, { FadeIn } from "react-native-reanimated";
 
 export interface AccountCarouselData {
   tag: string;
@@ -27,25 +28,24 @@ export default function AccountCarouselComponent({ ...props }: AccounCarouselCom
         {Array.from({ length: props.data.length }).map((col, index) => {
           return (
             <View
-              className={`w-[125] h-[180] ${
-                bgColors[index % 6]
-              } ml-8 rounded-[18] justify-between shadow-m p-3  `}
+              className={`w-[125] h-[180] ${bgColors[index % 6]
+                } ml-8 rounded-[18] justify-between shadow-m p-3  `}
               key={index}
             >
-              <View className=" h-[35] rounded-[50] bg-white items-center justify-center">
-                <Text className="font-medium">{props.data[index].tag}</Text>
+              <View className=" h-[35] rounded-[50] bg-white opacity-92 items-center justify-center">
+                <AppText className="">{props.data[index].tag}</AppText>
               </View>
 
               <View className="">
-                <Text className=" text-white font-bold">
+                <AppText.Caption className=" text-white font-medium">
                   ${props.data[index].balance.toLocaleString()}
-                </Text>
-                <Text className=" text-white font-medium">
+                </AppText.Caption>
+                <AppText.Caption className=" text-white font-medium">
                   {props.data[index].name}
-                </Text>
-                <Text className=" text-white font-medium">
+                </AppText.Caption>
+                <AppText.Caption className=" text-white font-medium ">
                   {props.data[index].currency}
-                </Text>
+                </AppText.Caption>
               </View>
             </View>
           );
