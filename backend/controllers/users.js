@@ -49,4 +49,37 @@ const deleteUser = async (req, res) => {
     }
 }
 
-export default {getUser, getSpecUser, createUser, updateUser, deleteUser};
+const loginUser = async (req, res) => {
+    const { email, password } = req.body;
+    
+    try {
+        //find user by email
+        const user = await User.findOne({ email: email });
+        
+        //if user doesn't exist
+        if (!user) {
+            return res.status(401).json({ message: "Invalid email or password" });
+        }
+        
+        //password comparison
+        const isMatch = user.comparePassword(password);
+        
+        //if password is wrong
+        if (!isMatch) {
+            return res.status(401).json({ message: "Invalid email or password" });
+        }
+        
+        const userResponse = {
+            _id: user._id,
+            name: user.name,
+            email: user.email,
+            phone: user.phone
+        };
+        
+        res.status(200).json({ user: userResponse });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+export default {getUser, getSpecUser, createUser, updateUser, deleteUser, loginUser};

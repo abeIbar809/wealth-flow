@@ -100,5 +100,3 @@ const styles = StyleSheet.create({
   savedBudget: { fontSize: 16, fontWeight: "500", marginVertical: 5 },
   insight: { fontSize: 14, marginTop: 5, color: "#333" },
 });
-
-

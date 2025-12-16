@@ -14,7 +14,16 @@ const userSchema = mongoose.Schema({
         type: String, 
         required: true,
     },
+    phone: {
+        type: String,
+        required: false,
+    },
 });
+
+//simple password comparison (testing - need hashing potentially)
+userSchema.methods.comparePassword = function(candidatePassword) {
+    return this.password === candidatePassword;
+};
 
 var user = mongoose.model('user', userSchema);
 export default user;
