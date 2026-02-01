@@ -37,7 +37,7 @@ export const plaidService: IPlaidLinkService = {
 const serviceHelpers = {
     createTokenConfig: async (): Promise<LinkTokenConfiguration> => {
         try {
-            const request = (await axios.post('http://localhost:3000/api/plaid/link-token', { _id: "id" }));
+            const request = (await axios.post(`${process.env.EXPO_PUBLIC_API_BASE_URL}/api/plaid/link-token`, { _id: "id" }));
             const { linkToken } = request.data
             return { token: linkToken, noLoadingState: false }
         } catch (error) {
@@ -49,7 +49,7 @@ const serviceHelpers = {
     handleSuccessfulAccountLink: async (publicToken: string) => {
         try {
             const body = { _id: "id", publicToken: publicToken }
-            const req = await axios.post('http://localhost:3000/plaid/api/token-exchange', body);
+            const req = await axios.post(`${process.env.EXPO_PUBLIC_API_BASE_URL}/api/token-exchange`, body);
             console.log(req.statusText)
         } catch (error) {
             throw error
