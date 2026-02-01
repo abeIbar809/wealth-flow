@@ -139,9 +139,84 @@ const getAccounts = async (req, res) => {
   }
 };
 
+// Sync accounts refresh balances from the plaid client.
+const syncAccounts = async (req, res) => {
+  const { userId } = req.params;
+
+  if (!userId) {
+    return res.status(400).json({ message: "User ID is required" });
+  }
+
+  try {
+    const banks = await Bank.find({ owner: userId, status: "active" });
+
+    if (banks.length === 0) {
+      return res.status(200).json({ message: "No linked banks found", accounts: [] });
+    }
+
+    const updatedAccounts = [];
+
+    for (const bank of banks) {
+      try {
+        const response = await PlaidClient.accountsGet({
+          access_token: bank.plaid_access_token,
+        });
+
+        for (const plaidAccount of response.data.accounts) {
+          const account = await Account.findOneAndUpdate(
+            { plaid_account_id: plaidAccount.account_id },
+            {
+              balance_available: plaidAccount.balances.available,
+              balance_current: plaidAccount.balances.current,
+              balance_limit: plaidAccount.balances.limit,
+              lastUpdated: new Date(),
+            },
+            { new: true },
+          );
+
+          if (account) {
+            updatedAccounts.push(account);
+          }
+        }
+
+        bank.lastSynced = new Date();
+        await bank.save();
+      } catch (bankError) {
+        console.error(`Error syncing bank ${bank._id}:`, bankError);
+        // Handle error
+        if (bankError.response?.data?.error_code === "ITEM_LOGIN_REQUIRED") {
+          bank.status = "pending_reauth";
+          await bank.save();
+        }
+      }
+    }
+
+    return res.status(200).json({
+      message: "Accounts synced successfully",
+      accounts: updatedAccounts,
+    });
+  } catch (error) {
+    console.error("Error syncing accounts:", error);
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+function mapPlaidAccountType(plaidType) {
+  const typeMap = {
+    depository: "checking",
+    credit: "credit",
+    loan: "loan",
+    investment: "investment",
+    brokerage: "investment",
+    other: "other",
+  };
+  return typeMap[plaidType] || "other";
+}
+
 export default {
   getLinkToken,
   getAccounts,
   exchangePublicToken,
   getAccounts,
+  syncAccounts,
 };
