@@ -62,7 +62,7 @@ export default function AccountCarouselComponent({ ...props }: AccounCarouselCom
   return (
     <Animated.View entering={FadeIn.duration(1000)} className="h-[200] ">
 
-      {props.data.length == 0 ?
+      {props.data.length === 0 ?
         (<>
           <View className=" h-[200] items-center justify-center ">
             <Ionicons name="link-outline" style={{ color: "green" }} size={40}></Ionicons>
@@ -78,9 +78,9 @@ export default function AccountCarouselComponent({ ...props }: AccounCarouselCom
                     } ml-8 rounded-[18] justify-between shadow-m p-3  `}
                   key={index}
                 >
-                  <View className=" h-[40]  rounded-[13] bg-white opacity-92 items-start justify-center pl-3">
+                  <View className=" h-[40]  rounded-[13] bg-white opacity-90 items-start justify-center pl-3">
                     <Ionicons name={getAccountIcon(props.data[index].type)} size={15}></Ionicons>
-                    <AppText className="text-gray-800 font-medium">{capitalizeFirstLetter(props.data[index].type)}</AppText>
+                    <AppText className=" font-medium">{capitalizeFirstLetter(props.data[index].type)}</AppText>
                   </View>
 
 

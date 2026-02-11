@@ -11,4 +11,8 @@ router.post("/token-exchange", plaidAct.exchangePublicToken);
 router.get("/accounts/:userId", plaidAct.getAccounts);
 router.post("/accounts/:userId/sync", plaidAct.syncAccounts);
 
+// Transactions
+router.get("/transactions/:userId", plaidAct.getTransactions);
+router.post("/transactions/:userId/sync", plaidAct.syncTransactions);
+
 export default router;

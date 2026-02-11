@@ -54,6 +54,30 @@ class AccountsService {
     }
   }
 
+  // calculate networth from bank accounts
+  calculateNetWorth(accounts: Account[]): {
+    assets: number;
+    liabilities: number;
+    networth: number;
+  } {
+    let assets = 0;
+    let liabilities = 0;
+
+    for (const account of accounts) {
+      if (account.type === "loan" || "credit") {
+        liabilities += account.balance_current;
+      } else {
+        assets += account.balance_current;
+      }
+    }
+
+    return {
+      assets: assets,
+      liabilities: liabilities,
+      networth: assets - liabilities,
+    };
+  }
+
   // get user id from auth store
   private getUserId(): string {
     const userId = useAuthStore.getState().user?._id;

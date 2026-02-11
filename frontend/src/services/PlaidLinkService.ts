@@ -1,4 +1,3 @@
-import axios from "axios";
 import {
   create as CreateTokenConfig,
   dismissLink,
@@ -44,8 +43,6 @@ export interface PlaidLinkCallbacks {
 
 class PlaidService {
   private callBacks: PlaidLinkCallbacks = {};
-
-  constructor() {}
 
   async openPlaidLink(callBacks?: PlaidLinkCallbacks): Promise<void> {
     this.callBacks = callBacks || {};

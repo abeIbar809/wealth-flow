@@ -1,5 +1,6 @@
 import Bank from "../models/bank.js";
 import Account from "../models/account.js";
+import Transaction from "../models/transaction.js";
 import { PlaidClient } from "../lib/plaidClient.js";
 import { CountryCode, Products } from "plaid";
 
@@ -213,10 +214,179 @@ function mapPlaidAccountType(plaidType) {
   return typeMap[plaidType] || "other";
 }
 
+// Sync transactions for the user
+const syncTransactions = async (req, res) => {
+  const { userId } = req.params;
+
+  // check user id.
+  if (!userId) {
+    return res.status(400).json({ message: "User ID is required" });
+  }
+
+  try {
+    // find user bank
+    const banks = await Bank.find({ owner: userId, status: "active" });
+
+    if (banks.length === 0) {
+      return res.status(200).json({ message: "No linked banks found", transactions: [] });
+    }
+
+    let allTransactions = [];
+
+    for (const bank of banks) {
+      try {
+        let hasMore = true;
+        let cursor = bank.cursor;
+
+        while (hasMore) {
+          // plaid client transaction sync
+          const response = await PlaidClient.transactionsSync({
+            access_token: bank.plaid_access_token,
+            cursor: cursor,
+          });
+
+          const { added, modified, removed, next_cursor, has_more } = response.data;
+
+          // Process added transactions to existing linked bank.
+          for (const txn of added) {
+            const account = await Account.findOne({
+              plaid_account_id: txn.account_id,
+            });
+            if (!account) continue;
+
+            // get type
+            const transactionType = determineTransactionType(txn);
+
+            // Update the api txn response to our database
+            await Transaction.findOneAndUpdate(
+              { plaid_transaction_id: txn.transaction_id },
+              {
+                plaid_transaction_id: txn.transaction_id,
+                account: account._id,
+                owner: userId,
+                name: txn.name,
+                merchant_name: txn.merchant_name,
+                amount: txn.amount,
+                date: new Date(txn.date),
+                authorized_date: txn.authorized_date ? new Date(txn.authorized_date) : null,
+                category: txn.category || [],
+                category_id: txn.category_id,
+                personal_finance_category: txn.personal_finance_category,
+                pending: txn.pending,
+                payment_channel: txn.payment_channel || "other",
+                transaction_type: transactionType,
+                logo_url: txn.logo_url,
+                website: txn.website,
+                currency: txn.iso_currency_code || "USD",
+              },
+              { upsert: true, new: true },
+            );
+          }
+
+          // Process modified transactions
+          for (const txn of modified) {
+            await Transaction.findOneAndUpdate(
+              { plaid_transaction_id: txn.transaction_id },
+              {
+                name: txn.name,
+                merchant_name: txn.merchant_name,
+                amount: txn.amount,
+                date: new Date(txn.date),
+                category: txn.category || [],
+                pending: txn.pending,
+              },
+            );
+          }
+
+          // Process removed transactions
+          for (const txn of removed) {
+            await Transaction.deleteOne({
+              plaid_transaction_id: txn.transaction_id,
+            });
+          }
+
+          cursor = next_cursor;
+          hasMore = has_more;
+        }
+
+        // Update the cursor for next sync
+        bank.cursor = cursor;
+        bank.lastSynced = new Date();
+        await bank.save();
+      } catch (bankError) {
+        console.error(`Error syncing transactions for bank ${bank._id}:`, bankError);
+      }
+    }
+
+    // Fetch recent transactions
+    const transactions = await Transaction.find({ owner: userId }).populate("account", "name institution_name mask").sort({ date: -1 }).limit(100);
+
+    return res.status(200).json({
+      message: "Transactions synced successfully",
+      transactions,
+    });
+  } catch (error) {
+    console.error("Error syncing transactions:", error);
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+// Get transactions for the user
+const getTransactions = async (req, res) => {
+  const { userId } = req.params;
+  const { limit = 50, offset = 0, accountId } = req.query;
+
+  if (!userId) {
+    return res.status(400).json({ message: "User ID is required" });
+  }
+
+  try {
+    const query = { owner: userId };
+    if (accountId) {
+      query.account = accountId;
+    }
+
+    const transactions = await Transaction.find(query)
+      .populate("account", "name institution_name mask type")
+      .sort({ date: -1 })
+      .skip(parseInt(offset))
+      .limit(parseInt(limit));
+
+    const total = await Transaction.countDocuments(query);
+
+    return res.status(200).json({
+      transactions,
+      total,
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+    });
+  } catch (error) {
+    console.error("Error fetching transactions:", error);
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+// Determine the transaction type based on amount and category
+function determineTransactionType(txn) {
+  // plaid amounts: positive = money out, negative = money in
+  if (txn.amount < 0) {
+    return "income";
+  }
+
+  const category = txn.category?.[0]?.toLowerCase() || "";
+  if (category.includes("transfer") || category.includes("payment")) {
+    return "transfer";
+  }
+
+  return "expense";
+}
+
 export default {
   getLinkToken,
   getAccounts,
   exchangePublicToken,
   getAccounts,
   syncAccounts,
+  getTransactions,
+  syncTransactions,
 };
