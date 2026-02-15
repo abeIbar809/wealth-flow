@@ -2,7 +2,7 @@ import { AppText } from '@/src/components/common/app-text';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import * as Haptics from 'expo-haptics';
 import React, { useState } from "react";
-import { ColorSchemeName, Pressable, useColorScheme, useWindowDimensions, View } from "react-native";
+import { Pressable, View } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
 
 export interface CardBalanceProps {
@@ -17,9 +17,7 @@ export interface CardBalanceProps {
 export default function NetWorthCardComponent({
   ...props
 }: CardBalanceProps): React.JSX.Element {
-  const [cardHeight, expandCardHeight] = useState(200)
-  const { width } = useWindowDimensions();
-  const colorScheme: ColorSchemeName = useColorScheme();
+  const [cardHeight] = useState(200)
 
   const onCardPressed = async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)

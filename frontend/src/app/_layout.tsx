@@ -6,6 +6,7 @@ import useAuthStore from "../stores/useAuthStore";
 export default function Rootlayout() {
 
   const { isAuthenticated } = useAuthStore()
+  
   return (
     <Stack>
       {/* Protected Routes. When isAuth is true tabs page is Open.*/}
