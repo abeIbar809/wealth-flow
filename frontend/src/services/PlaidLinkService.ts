@@ -62,6 +62,22 @@ class PlaidService {
 
     try {
       const tokenConfiguration = await this.createLinkToken(userId);
+      console.log("Plaid tokenConfiguration:", tokenConfiguration);
+      console.log("Plaid native funcs:", {
+        CreateTokenConfig: typeof CreateTokenConfig,
+        open: typeof open,
+        dismissLink: typeof dismissLink,
+      });
+
+      if (typeof CreateTokenConfig !== "function" || typeof open !== "function") {
+        console.error(
+          "Plaid native SDK not available. Are you running in Expo Go? Use a custom dev client or EAS build."
+        );
+        throw new Error(
+          "Plaid native module not available. Build a custom dev client or use EAS to run Plaid Link."
+        );
+      }
+
       CreateTokenConfig(tokenConfiguration);
 
       const linkOpenProps: LinkOpenProps = {
@@ -147,3 +163,29 @@ class PlaidService {
 }
 
 export const plaidService: PlaidService = new PlaidService();
+
+export async function openPlaidLink(userId: string) {
+  try {
+    const resp = await API.post(`/plaid/link_token`, { userId });
+    console.log("link token response data:", resp.data);
+    const token = resp.data?.linkToken || resp.data?.link_token;
+    console.log("resolved token:", token);
+
+    if (!token) {
+      console.error("No link token in response");
+      return;
+    }
+
+    // Check native function presence (adjust to how you import it)
+    if (typeof (global as any).PlaidLinkOpen !== "function" && typeof (global as any).open !== "function") {
+      console.warn("Plaid native open not available — are you running Expo Go? Use a custom dev client or EAS build.");
+      return;
+    }
+
+    // call the native/open implementation your app uses:
+    // Example: open({ token }) or PlaidLink.open({ token }) depending on your import
+    (global as any).open ? (global as any).open({ token }) : (global as any).PlaidLinkOpen({ token });
+  } catch (err) {
+    console.error("Error opening Plaid Link:", err);
+  }
+}

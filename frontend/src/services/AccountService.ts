@@ -64,7 +64,8 @@ class AccountsService {
     let liabilities = 0;
 
     for (const account of accounts) {
-      if (account.type === "loan" || "credit") {
+      // fixed condition: check both types explicitly
+      if (account.type === "loan" || account.type === "credit") {
         liabilities += account.balance_current;
       } else {
         assets += account.balance_current;
