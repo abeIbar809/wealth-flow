@@ -32,6 +32,24 @@ const PostSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  username: {
+    type: String,
+    required: true,
+    default: "Anonymous",
+  },
+  category: {
+    type: String,
+    enum: ["financial", "app", "social", "other"],
+    default: "other",
+  },
+  flagged: {
+    type: Boolean,
+    default: false,
+  },
+  flagReason: {
+    type: String,
+    default: "",
+  },
   createdAt: {
     type: Date,
     default: Date.now,
@@ -92,6 +110,34 @@ app.delete("/api/posts/:id", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+// Flag a post
+app.patch("/api/posts/:id/flag", async (req, res) => {
+  try {
+    const { flagReason } = req.body;
+    console.log("Flagging post:", req.params.id, "Reason:", flagReason);
+
+    const post = await Post.findByIdAndUpdate(
+      req.params.id,
+      {
+        flagged: true,
+        flagReason: flagReason || "",
+      },
+      { new: true }
+    );
+
+    if (!post) {
+      return res.status(404).json({ error: "Post not found" });
+    }
+
+    console.log("Post flagged");
+    res.json(post);
+  } catch (err) {
+    console.error("Error flagging post:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 
 // Add reply to post
 app.post("/api/posts/:id/replies", async (req, res) => {
