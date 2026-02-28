@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import express from "express";
 import cors from "cors";
 import userrouter from "./routes/users.js";
+import weeklyGoalRouter from "./routes/weeklyGoals.js";
 
 const app = express();
 
@@ -168,6 +169,7 @@ app.get("/backend-test", async (req, res) => {
 });
 
 app.use("/users", userrouter);
+app.use("/weeklygoals", weeklyGoalRouter);
 
 // Start Server
 const port = process.env.PORT || 9000;

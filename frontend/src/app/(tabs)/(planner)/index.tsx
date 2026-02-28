@@ -1,77 +1,158 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, TextInput, Button, ScrollView, Alert, Dimensions } from "react-native";
-import { LineChart } from "react-native-chart-kit";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  ScrollView,
+  Alert,
+} from "react-native";
+import useGoalsStore from "@/src/stores/useGoalsStore";
+import useAuthStore from "@/src/stores/useAuthStore";
 
-const screenWidth = Dimensions.get("window").width;
+const CATEGORIES = ["Groceries", "Dining", "Entertainment", "Transport", "Shopping", "Other"];
 
 const FinancialPlanner: React.FC = () => {
-  const [budget, setBudget] = useState<string>(""); 
-  const [savedBudget, setSavedBudget] = useState<number | null>(null); 
+  const { user } = useAuthStore();
+  const { weeklyGoal, isLoading, createWeeklyGoal, updateWeeklyGoal } = useGoalsStore();
 
-  const handleSaveBudget = () => {
-    const numericBudget = Number(budget);
-    if (!budget || isNaN(numericBudget)) {
-      Alert.alert("Invalid input", "Please enter a valid number.");
+  const [limits, setLimits] = useState<{ [key: string]: string }>({});
+  const [spentAmounts, setSpentAmounts] = useState<{ [key: string]: string }>({});
+  const [isSettingGoals, setIsSettingGoals] = useState(true);
+
+  const handleSaveGoals = async () => {
+    const goals = CATEGORIES.map((cat) => ({
+      category: cat,
+      limit: Number(limits[cat] || 0),
+      spent: 0,
+    })).filter((g) => g.limit > 0);
+
+    if (goals.length === 0) {
+      Alert.alert("No goals set", "Please enter a limit for at least one category.");
       return;
     }
-    setSavedBudget(numericBudget);
-    setBudget(""); 
+
+    const success = await createWeeklyGoal(user._id, goals);
+    if (success) {
+      setIsSettingGoals(false);
+      Alert.alert("Success", "Weekly goals saved!");
+    }
   };
 
-  const data = {
-    labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
-    datasets: [
-      {
-        data: [500, 450, 600, 550, 700, 650],
-        strokeWidth: 2,
-        color: (opacity = 1) => `rgba(43, 103, 255, ${opacity})`,
-      },
-    ],
+  const handleUpdateSpending = async () => {
+    if (!weeklyGoal?._id) return;
+
+    const updatedGoals = weeklyGoal.goals.map((g) => ({
+      ...g,
+      spent: g.spent + Number(spentAmounts[g.category] || 0),
+    }));
+
+    const success = await updateWeeklyGoal(weeklyGoal._id, updatedGoals);
+    if (success) {
+      setSpentAmounts({});
+      Alert.alert("Success", "Spending updated!");
+    }
+  };
+
+  const getProgressColor = (spent: number, limit: number) => {
+    const ratio = spent / limit;
+    if (ratio >= 1) return "#FF3B30";
+    if (ratio >= 0.75) return "#FF9500";
+    return "#03BF62";
   };
 
   return (
     <ScrollView style={styles.container}>
-      <Text style={styles.header}>Financial Planner</Text>
+      <Text style={styles.header}>Weekly Goals</Text>
 
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Monthly Budget</Text>
-        {savedBudget !== null && (
-          <Text style={styles.savedBudget}>Your current budget: ${savedBudget}</Text>
-        )}
-        <TextInput
-          style={styles.input}
-          placeholder="Enter your budget"
-          keyboardType="numeric"
-          value={budget}
-          onChangeText={setBudget}
-        />
-        <Button title="Save" onPress={handleSaveBudget} color="#2b67ff" />
-      </View>
+      {isSettingGoals ? (
+        // SET GOALS VIEW
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Set Your Weekly Limits</Text>
+          {CATEGORIES.map((cat) => (
+            <View key={cat} style={styles.row}>
+              <Text style={styles.categoryLabel}>{cat}</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="$0"
+                keyboardType="numeric"
+                value={limits[cat] || ""}
+                onChangeText={(val) => setLimits({ ...limits, [cat]: val })}
+              />
+            </View>
+          ))}
+          <TouchableOpacity style={styles.button} onPress={handleSaveGoals}>
+            <Text style={styles.buttonText}>
+              {isLoading ? "Saving..." : "Save Goals"}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        // TRACK SPENDING VIEW
+        <View>
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>This Week's Progress</Text>
+            {weeklyGoal?.goals.map((goal) => (
+              <View key={goal.category} style={styles.goalRow}>
+                <View style={styles.goalHeader}>
+                  <Text style={styles.categoryLabel}>{goal.category}</Text>
+                  <Text style={styles.goalAmount}>
+                    ${goal.spent} / ${goal.limit}
+                  </Text>
+                </View>
+                <View style={styles.progressBarBackground}>
+                  <View
+                    style={[
+                      styles.progressBarFill,
+                      {
+                        width: `${Math.min((goal.spent / goal.limit) * 100, 100)}%`,
+                        backgroundColor: getProgressColor(goal.spent, goal.limit),
+                      },
+                    ]}
+                  />
+                </View>
+              </View>
+            ))}
+            <View style={styles.totalRow}>
+              <Text style={styles.totalLabel}>Total</Text>
+              <Text style={styles.totalAmount}>
+                ${weeklyGoal?.totalSpent} / ${weeklyGoal?.totalLimit}
+              </Text>
+            </View>
+          </View>
 
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>AI Financial Insights</Text>
-        <Text style={styles.insight}>
-          Based on your spending patterns and income, you are likely to overspend on dining out this month. Consider setting a limit of $350.
-        </Text>
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Log Spending</Text>
+            {weeklyGoal?.goals.map((goal) => (
+              <View key={goal.category} style={styles.row}>
+                <Text style={styles.categoryLabel}>{goal.category}</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="$0"
+                  keyboardType="numeric"
+                  value={spentAmounts[goal.category] || ""}
+                  onChangeText={(val) =>
+                    setSpentAmounts({ ...spentAmounts, [goal.category]: val })
+                  }
+                />
+              </View>
+            ))}
+            <TouchableOpacity style={styles.button} onPress={handleUpdateSpending}>
+              <Text style={styles.buttonText}>
+                {isLoading ? "Updating..." : "Update Spending"}
+              </Text>
+            </TouchableOpacity>
+          </View>
 
-        <Text style={[styles.cardTitle, { marginTop: 15 }]}>Spending Trends</Text>
-        <LineChart
-          data={data}
-          width={screenWidth - 60}
-          height={180}
-          chartConfig={{
-            backgroundColor: "#fff",
-            backgroundGradientFrom: "#fff",
-            backgroundGradientTo: "#fff",
-            decimalPlaces: 0,
-            color: (opacity = 1) => `rgba(43, 103, 255, ${opacity})`,
-            labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-            style: { borderRadius: 8 },
-            propsForDots: { r: "4", strokeWidth: "2", stroke: "#2b67ff" },
-          }}
-          style={{ marginVertical: 8, borderRadius: 8 }}
-        />
-      </View>
+          <TouchableOpacity
+            style={[styles.button, styles.resetButton]}
+            onPress={() => setIsSettingGoals(true)}
+          >
+            <Text style={styles.buttonText}>Set New Goals</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </ScrollView>
   );
 };
@@ -79,7 +160,7 @@ const FinancialPlanner: React.FC = () => {
 export default FinancialPlanner;
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20 },
+  container: { flex: 1, padding: 20, backgroundColor: "#f5f5f5" },
   header: { fontSize: 24, fontWeight: "bold", color: "#000", marginBottom: 20 },
   card: {
     padding: 15,
@@ -89,14 +170,32 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     backgroundColor: "#fff",
   },
-  cardTitle: { fontSize: 18, fontWeight: "600", color: "#2b67ff" },
+  cardTitle: { fontSize: 18, fontWeight: "600", color: "#2b67ff", marginBottom: 10 },
+  row: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginVertical: 6 },
+  categoryLabel: { fontSize: 15, color: "#333", flex: 1 },
   input: {
     borderWidth: 1,
     borderColor: "#2b67ff",
     borderRadius: 5,
-    padding: 10,
-    marginVertical: 10,
+    padding: 8,
+    width: 80,
+    textAlign: "center",
   },
-  savedBudget: { fontSize: 16, fontWeight: "500", marginVertical: 5 },
-  insight: { fontSize: 14, marginTop: 5, color: "#333" },
+  button: {
+    backgroundColor: "#2b67ff",
+    padding: 12,
+    borderRadius: 8,
+    alignItems: "center",
+    marginTop: 10,
+  },
+  resetButton: { backgroundColor: "#666", marginBottom: 20 },
+  buttonText: { color: "#fff", fontWeight: "600", fontSize: 16 },
+  goalRow: { marginVertical: 8 },
+  goalHeader: { flexDirection: "row", justifyContent: "space-between", marginBottom: 4 },
+  goalAmount: { fontSize: 14, color: "#666" },
+  progressBarBackground: { height: 10, backgroundColor: "#eee", borderRadius: 5 },
+  progressBarFill: { height: 10, borderRadius: 5 },
+  totalRow: { flexDirection: "row", justifyContent: "space-between", marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: "#eee" },
+  totalLabel: { fontSize: 16, fontWeight: "bold" },
+  totalAmount: { fontSize: 16, fontWeight: "bold", color: "#2b67ff" },
 });
