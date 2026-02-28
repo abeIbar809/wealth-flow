@@ -10,7 +10,10 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.wealthflowapp"
+      "bundleIdentifier": "com.anonymous.wealthflowapp",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -49,8 +52,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "cdd9a6ba-d201-4c15-904b-8893d700fe4a"
+        "projectId": "c2b218d4-7086-4d03-913b-8415aad8c484"
       }
-    }
+    },
+    "owner": "marleyschneider"
   }
 }
