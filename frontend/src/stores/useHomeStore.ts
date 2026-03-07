@@ -25,13 +25,24 @@ export interface Account {
   };
 }
 
+export interface NetWorthData {
+  assets: number;
+  liabilities: number;
+  networth: number;
+  currency: string;
+  changeAmount: number;
+  changePercentage: number;
+  changeDirection: "up" | "down" | "neutral";
+}
+
 export interface HomeState {
   // Data
   accounts: Account[];
-
+  netWorthData: NetWorthData | null;
   // Loading states
   isLoadingAccounts: boolean;
   isRefreshing: boolean;
+  isNetworthLoading: boolean;
 
   // Error states
   error: string | null;
@@ -40,8 +51,9 @@ export interface HomeState {
   setAccounts: (accounts: Account[]) => void;
   addAccount: (account: Account) => void;
   addAccounts: (accounts: Account[]) => void;
+  setNetWorthData: (data: NetWorthData) => void;
 
-  setLoading: (key: "accounts", loading: boolean) => void;
+  setLoading: (key: "accounts" | "netWorth", loading: boolean) => void;
   setRefreshing: (refreshing: boolean) => void;
   setError: (error: string | null) => void;
 
@@ -49,6 +61,9 @@ export interface HomeState {
   fetchAccounts: () => Promise<void>;
   syncAccounts: () => Promise<void>;
   refreshAllData: () => Promise<void>;
+
+  // bank management
+  removeBank: (bankId: string) => Promise<void>;
 
   // Reset
   resetHome: () => void;
@@ -74,9 +89,29 @@ const transformAccount = (serviceAccount: ServiceAccount): Account => ({
 
 const initialState = {
   accounts: [],
+  netWorthData: null,
   isLoadingAccounts: false,
+  isNetworthLoading: false,
   isRefreshing: false,
   error: null,
+};
+
+const calculateNetWorthData = (accounts: Account[], previousNetWorth?: number): NetWorthData => {
+  const { networth, liabilities, assets } = accountsService.calculateNetWorth(accounts as ServiceAccount[]);
+
+  // Calculate change (mock for now - would need historical data)
+  const changeAmount = previousNetWorth ? networth - previousNetWorth : 0;
+  const changePercentage = previousNetWorth && previousNetWorth !== 0 ? (changeAmount / previousNetWorth) * 100 : 0;
+
+  return {
+    assets,
+    liabilities,
+    networth,
+    currency: "USD",
+    changeAmount: Math.abs(changeAmount),
+    changePercentage: Math.abs(changePercentage),
+    changeDirection: changeAmount > 0 ? "up" : changeAmount < 0 ? "down" : "neutral",
+  };
 };
 
 export const useHomeStore = create<HomeState>()((set, get) => ({
@@ -100,8 +135,13 @@ export const useHomeStore = create<HomeState>()((set, get) => ({
       case "accounts":
         set({ isLoadingAccounts: loading });
         break;
+      case "netWorth":
+        set({ isNetworthLoading: loading });
+        break;
     }
   },
+
+  setNetWorthData: (netWorthData) => set({ netWorthData }),
 
   setRefreshing: (isRefreshing) => set({ isRefreshing }),
 
@@ -109,29 +149,36 @@ export const useHomeStore = create<HomeState>()((set, get) => ({
 
   // Fetch accounts from API
   fetchAccounts: async () => {
-    const { setLoading, setError, setAccounts } = get();
+    const { setLoading, setError, setAccounts, setNetWorthData } = get();
 
     setLoading("accounts", true);
+    setLoading("netWorth", true);
     setError(null);
 
     try {
+      // Fetch accounts from service
       const serviceAccounts = await accountsService.getAccounts();
       const accounts = serviceAccounts.map(transformAccount);
 
       setAccounts(accounts);
+      // update the networth data
+      const newNetWorthData = calculateNetWorthData(accounts);
+      setNetWorthData(newNetWorthData);
     } catch (error) {
       console.error("Error fetching accounts:", error);
       setError(error instanceof Error ? error.message : "Failed to fetch accounts");
     } finally {
       setLoading("accounts", false);
+      setLoading("netWorth", false);
     }
   },
 
   // Sync accounts refresh balances from api
   syncAccounts: async () => {
-    const { setLoading, setError, setAccounts } = get();
+    const { setLoading, setError, setAccounts, setNetWorthData } = get();
 
     setLoading("accounts", true);
+    setLoading("netWorth", true);
     setError(null);
 
     try {
@@ -139,11 +186,16 @@ export const useHomeStore = create<HomeState>()((set, get) => ({
       const accounts = serviceAccounts.map(transformAccount);
 
       setAccounts(accounts);
+
+      // update the networth data
+      const newNetWorthData = calculateNetWorthData(accounts);
+      setNetWorthData(newNetWorthData);
     } catch (error) {
       console.error("Error syncing accounts:", error);
       setError(error instanceof Error ? error.message : "Failed to sync accounts");
     } finally {
       setLoading("accounts", false);
+      setLoading("netWorth", false);
     }
   },
 
@@ -164,6 +216,19 @@ export const useHomeStore = create<HomeState>()((set, get) => ({
   },
 
   resetHome: () => set(initialState),
+
+  removeBank: async (bankId: string) => {
+    const { setError, syncAccounts } = get();
+    try {
+      // remove bank
+      await accountsService.removeBank(bankId);
+      // sync accounts for updating
+      await syncAccounts();
+    } catch (error) {
+      console.error("Error removing bank:", error);
+      setError(error instanceof Error ? error.message : "Failed to remove bank");
+    }
+  },
 }));
 
 // Selectors

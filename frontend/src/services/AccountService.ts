@@ -54,6 +54,19 @@ class AccountsService {
     }
   }
 
+  async removeBank(bankId: string): Promise<void> {
+    const userId = this.getUserId();
+
+    try {
+      await API.delete(`/plaid/banks/${bankId}`, {
+        data: { userId },
+      });
+    } catch (error) {
+      console.error("Error removing bank:", error);
+      throw new Error("Error removing bank");
+    }
+  }
+
   // calculate networth from bank accounts
   calculateNetWorth(accounts: Account[]): {
     assets: number;
@@ -64,7 +77,6 @@ class AccountsService {
     let liabilities = 0;
 
     for (const account of accounts) {
-      // fixed condition: check both types explicitly
       if (account.type === "loan" || account.type === "credit") {
         liabilities += account.balance_current;
       } else {

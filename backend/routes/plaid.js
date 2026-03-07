@@ -15,4 +15,7 @@ router.post("/accounts/:userId/sync", plaidAct.syncAccounts);
 router.get("/transactions/:userId", plaidAct.getTransactions);
 router.post("/transactions/:userId/sync", plaidAct.syncTransactions);
 
+// Bank management
+router.delete("/banks/:bankId", plaidAct.removeBank);
+
 export default router;

@@ -381,6 +381,49 @@ function determineTransactionType(txn) {
   return "expense";
 }
 
+const removeBank = async (req, res) => {
+  const { bankId } = req.params;
+  const { userId } = req.body;
+
+  if (!bankId || !userId) {
+    return res.status(400).json({ message: "Bank ID and User ID are required" });
+  }
+
+  try {
+    const bank = await Bank.findOne({ _id: bankId, owner: userId });
+
+    if (!bank) {
+      return res.status(404).json({ message: "404 Bank not found" });
+    }
+
+    // Remove item from Plaid using access_token
+    try {
+      await PlaidClient.itemRemove({
+        access_token: bank.plaid_access_token,
+      });
+    } catch (plaidError) {
+      console.error("Error removing item from Plaid:", plaidError);
+      // Continue with local deletion even if Plaid removal fails
+    }
+
+    // Delete all related transactions
+    const accounts = await Account.find({ bank: bank._id });
+    const accountIds = accounts.map((a) => a._id);
+    await Transaction.deleteMany({ account: { $in: accountIds } });
+
+    // Delete all related accounts
+    await Account.deleteMany({ bank: bank._id });
+
+    // Delete the bank
+    await Bank.deleteOne({ _id: bank._id });
+
+    return res.status(200).json({ message: "Bank removed successfully" });
+  } catch (error) {
+    console.error("Error removing bank:", error);
+    return res.status(500).json({ message: error.message });
+  }
+};
+
 export default {
   getLinkToken,
   getAccounts,
@@ -389,4 +432,5 @@ export default {
   syncAccounts,
   getTransactions,
   syncTransactions,
+  removeBank,
 };
