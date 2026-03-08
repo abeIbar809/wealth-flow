@@ -5,13 +5,22 @@ import { MockAccounts, MockNetWorthGrowthData } from "@/src/mock";
 import AccountCarouselComponent from "@/src/modules/home/components/accounts/AccountCarousel";
 import NetWorthCardComponent from "@/src/modules/home/components/dashboard/NetWorthCard";
 import NetWorthBarChartComponent from "@/src/modules/home/components/dashboard/NetWorthGrowthBarChar";
+import { useHomeStore } from "@/src/stores/useHomeStore";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import React from "react";
+import React, { useEffect } from "react";
 import { RefreshControl, ScrollView, View } from "react-native";
 
 export default function HomeIndex() {
+
+  const { accounts, fetchAccounts } = useHomeStore()
+
+  useEffect(() => {
+    // fetch accounts on mount
+    fetchAccounts()
+  }, [])
+
   return (
     <>
       <StatusBar style="auto" />
@@ -55,7 +64,7 @@ export default function HomeIndex() {
               <Ionicons name="add-circle-outline" size={30} color={"#2D2F43"} />
             </HapticButton>
           </HeadingWithElement>
-          <AccountCarouselComponent data={MockAccounts} />
+          <AccountCarouselComponent data={accounts} />
         </GroupedPageSection>
         <View className="h-[100] w-full "></View>
       </ScrollView>

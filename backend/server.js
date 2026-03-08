@@ -4,6 +4,7 @@ import express from "express";
 import cors from "cors";
 import userrouter from "./routes/users.js";
 import weeklyGoalRouter from "./routes/weeklyGoals.js";
+import plaidRoutes from "./routes/plaid.js";
 
 const app = express();
 
@@ -32,6 +33,24 @@ const PostSchema = new mongoose.Schema({
   content: {
     type: String,
     required: true,
+  },
+  username: {
+    type: String,
+    required: true,
+    default: "Anonymous",
+  },
+  category: {
+    type: String,
+    enum: ["financial", "app", "social", "other"],
+    default: "other",
+  },
+  flagged: {
+    type: Boolean,
+    default: false,
+  },
+  flagReason: {
+    type: String,
+    default: "",
   },
   createdAt: {
     type: Date,
@@ -93,6 +112,34 @@ app.delete("/api/posts/:id", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+// Flag a post
+app.patch("/api/posts/:id/flag", async (req, res) => {
+  try {
+    const { flagReason } = req.body;
+    console.log("Flagging post:", req.params.id, "Reason:", flagReason);
+
+    const post = await Post.findByIdAndUpdate(
+      req.params.id,
+      {
+        flagged: true,
+        flagReason: flagReason || "",
+      },
+      { new: true }
+    );
+
+    if (!post) {
+      return res.status(404).json({ error: "Post not found" });
+    }
+
+    console.log("Post flagged");
+    res.json(post);
+  } catch (err) {
+    console.error("Error flagging post:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 
 // Add reply to post
 app.post("/api/posts/:id/replies", async (req, res) => {
@@ -168,6 +215,7 @@ app.get("/backend-test", async (req, res) => {
   }
 });
 
+app.use("/api/plaid", plaidRoutes);
 app.use("/users", userrouter);
 app.use("/weeklygoals", weeklyGoalRouter);
 

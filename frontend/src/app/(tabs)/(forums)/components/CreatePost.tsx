@@ -1,11 +1,23 @@
 import { createPost } from "@/src/api/fourms";
+import useAuthStore, { AuthState } from "@/src/stores/useAuthStore";
 import { useState } from "react";
-import { View, Text, TextInput, Button, Alert, StyleSheet } from "react-native";
+import { View, TextInput, TouchableOpacity, Alert } from "react-native";
+import { AppText } from "@/src/components/common/app-text";
 
+type Category = "financial" | "app" | "social" | "other";
+
+const CATEGORIES: { label: string; value: Category }[] = [
+  { label: "💰 Financial", value: "financial" },
+  { label: "📱 App",       value: "app"       },
+  { label: "🤝 Social",    value: "social"    },
+  { label: "💬 Other",     value: "other"     },
+];
 
 export default function CreatePost({ onPostCreated }: { onPostCreated: () => void }) {
-  const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
+  const user = useAuthStore((state: AuthState) => state.user);
+  const [title, setTitle]           = useState("");
+  const [content, setContent]       = useState("");
+  const [category, setCategory]     = useState<Category>("other");
   const [submitting, setSubmitting] = useState(false);
 
   const submitPost = async () => {
@@ -13,12 +25,12 @@ export default function CreatePost({ onPostCreated }: { onPostCreated: () => voi
       Alert.alert("Please fill in all fields");
       return;
     }
-
     try {
       setSubmitting(true);
-      await createPost({ title, content });
+      await createPost({ title, content, username: user?.name || "Anonymous", category });
       setTitle("");
       setContent("");
+      setCategory("other");
       onPostCreated();
       Alert.alert("Post created successfully!");
     } catch (err) {
@@ -30,14 +42,14 @@ export default function CreatePost({ onPostCreated }: { onPostCreated: () => voi
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.heading}>Create a Post</Text>
+    <View className="border-2 border-[#03BF62] rounded-2xl p-5 mb-6 bg-white">
+      <AppText type="subtitle" className="mb-3">Create a Post</AppText>
 
       <TextInput
         placeholder="Post Title"
         value={title}
         onChangeText={setTitle}
-        style={styles.input}
+        className="bg-[#F4F6FA] rounded-xl px-3 h-10 mb-3"
       />
 
       <TextInput
@@ -45,38 +57,41 @@ export default function CreatePost({ onPostCreated }: { onPostCreated: () => voi
         value={content}
         onChangeText={setContent}
         multiline
-        style={[styles.input, styles.textArea]}
+        className="bg-[#F4F6FA] rounded-xl px-3 py-3 mb-3 min-h-[100px]"
+        textAlignVertical="top"
       />
 
-      <Button title={submitting ? "Posting..." : "Post"} onPress={submitPost} disabled={submitting} />
+      <AppText type="defaultSemiBold" className="mb-2">Category</AppText>
+      <View className="flex-row flex-wrap gap-2 mb-4">
+        {CATEGORIES.map((cat) => (
+          <TouchableOpacity
+            key={cat.value}
+            onPress={() => setCategory(cat.value)}
+            className={`px-4 py-1.5 rounded-full border ${
+              category === cat.value
+                ? "bg-[#03BF62] border-[#03BF62]"
+                : "bg-white border-gray-300"
+            }`}
+          >
+            <AppText
+              type="normal"
+              className={category === cat.value ? "text-white" : "text-gray-600"}
+            >
+              {cat.label}
+            </AppText>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <TouchableOpacity
+        onPress={submitPost}
+        disabled={submitting}
+        className="bg-[#03BF62] rounded-2xl h-9 items-center justify-center"
+      >
+        <AppText type="defaultSemiBold" className="text-white">
+          {submitting ? "Posting..." : "Post"}
+        </AppText>
+      </TouchableOpacity>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    borderWidth: 2,
-    borderColor: "#007bff",
-    padding: 20,
-    marginBottom: 30,
-    borderRadius: 8,
-    backgroundColor: "#f8f9fa",
-  },
-  heading: {
-    fontSize: 20,
-    fontWeight: "bold",
-    marginBottom: 10,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 4,
-    padding: 10,
-    marginBottom: 10,
-  },
-  textArea: {
-    minHeight: 100,
-    textAlignVertical: "top",
-  },
-});
-

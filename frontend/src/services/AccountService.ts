@@ -1,0 +1,94 @@
+import { API } from "../api/api";
+import useAuthStore from "../stores/useAuthStore";
+
+// Types
+export interface Account {
+  _id: string;
+  plaid_account_id?: string;
+  name: string;
+  official_name?: string;
+  type: "checking" | "savings" | "credit" | "investment" | "loan" | "depository" | "brokerage" | "other";
+  subtype?: string;
+  mask?: string;
+  balance_available?: number;
+  balance_current: number;
+  balance_limit?: number;
+  balance?: number; // Virtual field
+  currency: string;
+  institution_name?: string;
+  institution_id?: string;
+  isLinked: boolean;
+  is_manual?: boolean;
+  lastUpdated: string;
+  bank?: {
+    _id: string;
+    institution_name: string;
+    status: string;
+  };
+}
+
+class AccountsService {
+  // fetch accounts from api
+  async getAccounts(): Promise<Account[]> {
+    const userId = this.getUserId();
+
+    try {
+      const response = await API.get(`/plaid/accounts/${userId}`);
+      return response.data.accounts || [];
+    } catch (error) {
+      console.error("Error fetching accounts:", error);
+      throw error;
+    }
+  }
+
+  // sync accounts from api
+  async syncAccounts(): Promise<Account[]> {
+    const userId = this.getUserId();
+
+    try {
+      const response = await API.post(`/plaid/accounts/${userId}/sync`);
+      return response.data.accounts || [];
+    } catch (error) {
+      console.error("Error syncing accounts:", error);
+      throw error;
+    }
+  }
+
+  // calculate networth from bank accounts
+  calculateNetWorth(accounts: Account[]): {
+    assets: number;
+    liabilities: number;
+    networth: number;
+  } {
+    let assets = 0;
+    let liabilities = 0;
+
+    for (const account of accounts) {
+      // fixed condition: check both types explicitly
+      if (account.type === "loan" || account.type === "credit") {
+        liabilities += account.balance_current;
+      } else {
+        assets += account.balance_current;
+      }
+    }
+
+    return {
+      assets: assets,
+      liabilities: liabilities,
+      networth: assets - liabilities,
+    };
+  }
+
+  // get user id from auth store
+  private getUserId(): string {
+    const userId = useAuthStore.getState().user?._id;
+    if (!userId) {
+      throw new Error("User must be logged in");
+    }
+    return userId;
+  }
+}
+
+export const accountsService = new AccountsService();
+
+export default accountsService;
