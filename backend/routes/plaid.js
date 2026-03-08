@@ -15,4 +15,10 @@ router.post("/accounts/:userId/sync", plaidAct.syncAccounts);
 router.get("/transactions/:userId", plaidAct.getTransactions);
 router.post("/transactions/:userId/sync", plaidAct.syncTransactions);
 
+//Manual Transaction
+router.post("/transactions/:userId/manual", plaidAct.createManualTransaction);
+
+//Manual Bank add
+router.post("/banks/:userId/manual", plaidAct.createManualBank);
+
 export default router;

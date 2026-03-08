@@ -43,6 +43,10 @@ const bankSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+  is_manual: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 bankSchema.pre('save', function() {

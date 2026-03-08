@@ -27,6 +27,29 @@ export interface Account {
   };
 }
 
+// frontend/src/services/AccountService.ts
+
+export interface ManualBankPayload {
+  institution_id: string;
+  institution_name: string;
+  plaid_access_token: string;
+  plaid_item_id: string;
+  cursor?: string | null;
+  lastSynced?: string | null; // ISO string
+  status?: "active" | "error" | "pending_reauth";
+  accounts: Array<{
+    name: string;
+    official_name?: string;
+    type: Account["type"];
+    subtype?: string;
+    mask?: string;
+    balance_current: number;
+    balance_available?: number;
+    balance_limit?: number;
+    currency?: string;
+  }>;
+}
+
 class AccountsService {
   // fetch accounts from api
   async getAccounts(): Promise<Account[]> {
@@ -77,6 +100,12 @@ class AccountsService {
       liabilities: liabilities,
       networth: assets - liabilities,
     };
+  }
+
+  async createManualBank(payload: ManualBankPayload): Promise<Account[]> {
+    const userId = this.getUserId();
+    const response = await API.post(`/plaid/banks/${userId}/manual`, payload);
+    return response.data.accounts || [];
   }
 
   // get user id from auth store

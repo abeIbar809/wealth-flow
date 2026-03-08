@@ -29,9 +29,7 @@ export default function AuthIndex() {
     clearError();
     const success = await attemptLogin(email, password);
     
-    if (success) {
-      router.replace("/(tabs)/(home)");
-    } else {
+    if (!success){
       Alert.alert("Login Failed", error || "Invalid credentials");
     }
   }

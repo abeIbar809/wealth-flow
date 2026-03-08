@@ -11,6 +11,7 @@ import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React, { useEffect } from "react";
 import { RefreshControl, ScrollView, View } from "react-native";
+import ExpensePieChart from "@/src/components/ExpensePieChart";
 
 export default function HomeIndex() {
 
@@ -64,9 +65,20 @@ export default function HomeIndex() {
               <Ionicons name="add-circle-outline" size={30} color={"#2D2F43"} />
             </HapticButton>
           </HeadingWithElement>
-          <AccountCarouselComponent data={accounts} />
+          <AccountCarouselComponent
+            data={accounts}
+            isLoading={false}
+            onAccountPress={(acct) => {
+              router.push({
+                pathname: "/addManualTransactionPopup",
+                params: { accountId: acct._id, accountName: acct.name },
+              });
+            }} />
         </GroupedPageSection>
         <View className="h-[100] w-full "></View>
+        <View style={{ marginTop: 24, paddingHorizontal: 16, paddingBottom: 24 }}>
+          <ExpensePieChart />
+        </View>
       </ScrollView>
     </>
   );

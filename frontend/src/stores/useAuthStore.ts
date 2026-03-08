@@ -25,6 +25,8 @@ const useAuthStore = create<AuthState>((set) => ({
 
   attemptLogin: async (email: string, password: string): Promise<boolean> => {
     set({ isLoading: true, error: null });
+    console.log("API_BASE_URL in app:", API_BASE_URL);
+    console.log("Login URL:", `${API_BASE_URL}/users/login`);
     try {
       const response = await fetch(`${API_BASE_URL}/users/login`, {
         method: 'POST',
