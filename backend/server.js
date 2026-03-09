@@ -5,6 +5,7 @@ import cors from "cors";
 import userrouter from "./routes/users.js";
 import weeklyGoalRouter from "./routes/weeklyGoals.js";
 import plaidRoutes from "./routes/plaid.js";
+import weeklySummaryRouter from "./routes/weeklySummary.js";
 
 const app = express();
 
@@ -218,6 +219,7 @@ app.get("/backend-test", async (req, res) => {
 app.use("/api/plaid", plaidRoutes);
 app.use("/users", userrouter);
 app.use("/weeklygoals", weeklyGoalRouter);
+app.use("/weeklysummary", weeklySummaryRouter);
 
 // Start Server
 const port = process.env.PORT || 9000;
