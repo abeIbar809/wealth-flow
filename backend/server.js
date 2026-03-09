@@ -4,6 +4,7 @@ import express from "express";
 import cors from "cors";
 import userrouter from "./routes/users.js";
 import plaidRoutes from "./routes/plaid.js";
+import stocksRouter from "./routes/stocks.js"
 
 const app = express();
 
@@ -214,7 +215,9 @@ app.get("/backend-test", async (req, res) => {
   }
 });
 
+
 app.use("/api/plaid", plaidRoutes);
+app.use("/api/stocks", stocksRouter);
 app.use("/users", userrouter);
 
 // Start Server
