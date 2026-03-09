@@ -23,6 +23,7 @@ export default function _layout() {
       <Tabs.Screen name="(forums)" options={{ header: (props) => (<TabsHeader {...props} />) }} />
       <Tabs.Screen name="(investments)" options={{ header: (props) => (<TabsHeader {...props} />) }} />
       <Tabs.Screen name="(planner)" options={{ header: (props) => (<TabsHeader {...props} />) }} />
+      <Tabs.Screen name="(debt)" options={{ header: (props) => (<TabsHeader {...props} />) }} />
     </Tabs>
   );
 }
