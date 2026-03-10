@@ -9,18 +9,37 @@ import { useHomeStore } from "@/src/stores/useHomeStore";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import React, { useEffect } from "react";
+import React, { useEffect, useCallback } from "react";
 import { RefreshControl, ScrollView, View } from "react-native";
 import ExpensePieChart from "@/src/components/ExpensePieChart";
-
+import * as Haptics from "expo-haptics";
 export default function HomeIndex() {
 
-  const { accounts, fetchAccounts } = useHomeStore()
+  const {
+    accounts,
+    fetchAccounts,
+    netWorthData,
+    isLoadingAccounts,
+    refreshAllData,
+    isRefreshing,
+    isNetworthLoading,
+  } = useHomeStore()
 
   useEffect(() => {
     // fetch accounts on mount
     fetchAccounts()
   }, [])
+
+  const handleRefresh = useCallback(async () => {
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    try {
+      // Sync data from Plaid and refresh
+      await refreshAllData();
+    } catch (error) {
+      console.error("Error refreshing data:", error);
+    }
+  }, [refreshAllData]);
 
   return (
     <>
@@ -31,8 +50,8 @@ export default function HomeIndex() {
         className="bg-white"
         refreshControl={
           <RefreshControl
-            refreshing={false}
-            onRefresh={() => { }}
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
             tintColor="#0000ff"
             colors={["#0000ff"]}
           />
@@ -45,10 +64,11 @@ export default function HomeIndex() {
             </HapticButton>
           </HeadingWithElement>
           <NetWorthCardComponent
-            isLoading={false}
-            balance={200000}
+            isLoading={isNetworthLoading}
+            balance={netWorthData?.networth}
+            assets={netWorthData?.assets}
             currency={"$"}
-            dept={100000}
+            dept={netWorthData?.liabilities}
             percentChange={63}
             onLongPress={() => { }}
           />

@@ -21,4 +21,7 @@ router.post("/transactions/:userId/manual", plaidAct.createManualTransaction);
 //Manual Bank add
 router.post("/banks/:userId/manual", plaidAct.createManualBank);
 
+// Bank management
+router.delete("/banks/:bankId", plaidAct.removeBank);
+
 export default router;

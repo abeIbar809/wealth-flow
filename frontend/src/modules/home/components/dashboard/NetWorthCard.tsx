@@ -6,8 +6,9 @@ import { Pressable, View } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
 
 export interface CardBalanceProps {
-  balance: number;
-  dept: number;
+  balance: number | undefined;
+  dept: number | undefined;
+  assets: number | undefined;
   currency: string;
   percentChange: number;
   isLoading: boolean;
@@ -32,7 +33,7 @@ export default function NetWorthCardComponent({
         <View className=" w-full justify-center pt-2">
           <AppText.SubTitleNormal className="text-white">Networth</AppText.SubTitleNormal>
           <AppText className=" text-white">
-            {props.currency} {props.balance.toLocaleString()}
+            {props.currency} {props.balance != undefined ? (props.balance.toLocaleString()) : "_"}
           </AppText>
         </View>
 
@@ -43,12 +44,22 @@ export default function NetWorthCardComponent({
           <Ionicons name='trending-up' color="#03BF62" size={20}></Ionicons>
         </View>
 
-        <View className="w-full bg-red-5 justify-center pb-2">
-          <AppText.SubTitleNormal className=" text-white ">Dept</AppText.SubTitleNormal>
-          <AppText className=" text-white ">
-            {props.currency} {props.dept.toLocaleString()}
-          </AppText>
+        <View className="w-full bg-red-5 ">
+           <AppText className=" text-white font-bold ">Assets</AppText>
+           <AppText.Caption className=" text-white ">
+             {props.currency}{props.assets != undefined ? props.assets.toLocaleString() : "_"}
+           </AppText.Caption>
         </View>
+
+
+          <View className="w-full bg-red-5 ">
+          <AppText className=" text-white font-bold ">Dept</AppText>
+          <AppText.Caption className=" text-white ">
+            {props.currency}{props.dept != undefined ? props.dept.toLocaleString() : "_"}
+          </AppText.Caption>
+          </View>
+        
+
       </Pressable>
     </Animated.View>
   );
