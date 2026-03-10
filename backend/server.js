@@ -3,8 +3,10 @@ import mongoose from "mongoose";
 import express from "express";
 import cors from "cors";
 import userrouter from "./routes/users.js";
+import weeklyGoalRouter from "./routes/weeklyGoals.js";
 import plaidRoutes from "./routes/plaid.js";
 import stocksRouter from "./routes/stocks.js"
+import weeklySummaryRouter from "./routes/weeklySummary.js";
 
 const app = express();
 
@@ -220,6 +222,8 @@ app.use("/api/plaid", plaidRoutes);
 app.use("/api/stocks", stocksRouter);
 app.use("/users", userrouter);
 app.use("/api/expenses", expensesRouter)
+app.use("/weeklygoals", weeklyGoalRouter);
+app.use("/weeklysummary", weeklySummaryRouter);
 
 // Start Server
 const port = process.env.PORT || 9000;
