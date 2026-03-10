@@ -15,38 +15,84 @@ import AddStockModal from "@/src/components/stocks/AddStockModal";
 import HeadingWithElement from "@/src/components/layout/heading-with-element";
 import HapticButton from "@/src/components/navigation/haptic-button";
 
+import { Account } from "./types/Account";
+import { fetchAccounts } from "./services/plaidService";
+import { calculateAssets } from "./utils/assetUtils";
+import AssetPieChart from "./components/AssetPieChart";
+import useAuthStore from "@/src/stores/useAuthStore";
+
 type TabType = "overview" | "stocks";
 
 export default function InvestmentsPage() {
+
+  // Screen measurements used to keep the chart sized nicely inside the card.
+  const screenWidth = Dimensions.get("window").width;
+  const cardContentWidth = screenWidth - 72;
+  const pieChartSize = Math.min(cardContentWidth - 12, 260);
+
+
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [assetBreakdown, setAssetBreakdown] = useState<any[]>([]);
+  const [selectedAssetType, setSelectedAssetType] = useState<string | null>(null);
+  const [sortOption, setSortOption] = useState<"balance" | "alpha">("balance");
 
   const [activeTab, setActiveTab] = useState<TabType>("overview");
 
   const [selected, setSelected] = useState("stocks");
 
-  const chartData: Record<string, number[]> = {
-    stocks: [12000, 13500, 12800, 14200],
-    crypto: [5000, 4200, 6100, 5800],
-    realestate: [250000, 265000, 290000, 310000],
+  // Temporary user id used to request this screen's data.
+  const USER_ID = "69aabec9eec4a3c03ea8948f";
+
+  const getID = () => { 
+    let id = useAuthStore.getState().user?._id
+    if (!id) {
+      id = USER_ID
+    }
+    return id
+  }
+
+  // Fetch accounts when page loads
+  useEffect(() => {
+    loadAccounts();
+  }, []);
+
+  const loadAccounts = async () => {
+    // Get the raw account list from the backend.
+    const data = await fetchAccounts(getID());
+
+    setAccounts(data);
+
+    // Group the raw accounts into chart-friendly asset totals.
+    const assets = calculateAssets(data);
+    setAssetBreakdown(assets);
   };
 
-  const labelsMap: Record<string, string[]> = {
-    stocks: ["Jan", "Feb", "Mar", "Apr"],
-    crypto: ["Jan", "Feb", "Mar", "Apr"],
-    realestate: ["2022", "2023", "2024", "2025"],
-  };
+  // Return only the accounts that belong to the selected asset type.
+  const getAccountsByType = (type: string) =>
+    accounts.filter((acc) => acc.type === type);
 
-  const titleMap: Record<string, string> = {
-    stocks: "Stocks",
-    crypto: "Crypto",
-    realestate: "Real Estate",
-  };
+  // Add up the selected group so each account can show its share as a percentage.
+  const totalSelectedAsset = selectedAssetType
+    ? getAccountsByType(selectedAssetType).reduce((sum, acc) => sum + acc.balance_current, 0)
+    : 0;
 
-  const assetBreakdown = [
-    { name: "Stocks", population: 55, color: "#7ef714", legendFontColor: "#aaa", legendFontSize: 14 },
-    { name: "Crypto", population: 15, color: "#f7c914", legendFontColor: "#aaa", legendFontSize: 14 },
-    { name: "Real Estate", population: 25, color: "#14b8f7", legendFontColor: "#aaa", legendFontSize: 14 },
-    { name: "Cash", population: 5, color: "#9ca3af", legendFontColor: "#aaa", legendFontSize: 14 },
-  ];
+  const sortedAccounts = () => {
+
+    if (!selectedAssetType) return [];
+
+    // Copy the list before sorting so the original filtered data is not changed.
+    const list = [...getAccountsByType(selectedAssetType)];
+
+    if (sortOption === "balance") {
+      return list.sort((a, b) => b.balance_current - a.balance_current);
+    }
+
+    if (sortOption === "alpha") {
+      return list.sort((a, b) => a.name.localeCompare(b.name));
+    }
+
+    return list;
+  };
 
   const handleTabChange = useCallback((tab: TabType) => {
     setActiveTab(tab);
@@ -159,6 +205,7 @@ export default function InvestmentsPage() {
   }, [selectedStock?.symbol, priceHistory]);
 
   return (
+
     <ScrollView style={styles.container}>
 
         {/* Tab Selector */}
@@ -221,54 +268,210 @@ export default function InvestmentsPage() {
 
       {/* Overview Tab Content */}
       <View style={{ display: activeTab === "overview" ? "flex" : "none" }}>
-        <View style={{ padding: 20 }}>
-          <Text style={styles.pageTitle}>Your Investments</Text>
 
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Asset Allocation</Text>
-            <PieChart
-              data={assetBreakdown}
-              width={screenWidth - 80}
-              height={220}
-              chartConfig={chartConfig}
-              accessor="population"
-              backgroundColor="transparent"
-              paddingLeft="10"
-              center={[5, 0]}
-            />
-          </View>
+    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 65 }}>
+      <View style={{ padding: 20 }}>
 
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Investments</Text>
+        <Text style={styles.pageTitle}>Your Investments</Text>
 
-            <View style={styles.pickerWrapper}>
+        {/* Asset Allocation */}
+        <View style={styles.card}>
+          <Text style={[styles.cardTitle, { textAlign: "center" }]}>
+            Asset Allocation
+          </Text>
+
+          {assetBreakdown.length > 0 && (
+            <View style={{ alignItems: "center", marginTop: 8 }}>
+
+              <AssetPieChart
+                data={assetBreakdown}
+                size={pieChartSize}
+                chartConfig={chartConfig}
+              />
+
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={{ marginTop: 10 }}
+                contentContainerStyle={{ alignItems: "center", paddingHorizontal: 10 }}
+              >
+                {/* Tap a label to show the matching accounts below. */}
+                {assetBreakdown.map((slice, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    onPress={() => setSelectedAssetType(slice.type)}
+                  >
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        marginRight: 20,
+                      }}
+                    >
+                      <View
+                        style={{
+                          width: 12,
+                          height: 12,
+                          backgroundColor: slice.color,
+                          marginRight: 6,
+                        }}
+                      />
+
+                      <Text style={{ color: "#aaa", fontSize: 12 }}>
+                        {slice.name}
+                      </Text>
+
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          )}
+        </View>
+
+        {/* Top Assets */}
+        <View style={styles.card}>
+
+          <Text style={[styles.cardTitle, { textAlign: "center" }]}>
+            Top 3 Assets
+          </Text>
+
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12 }}>
+
+            {/* Show the three largest asset groups as quick-select cards. */}
+            {assetBreakdown.slice(0, 3).map((acc, i) => (
+
+              <TouchableOpacity
+                key={i}
+                onPress={() => setSelectedAssetType(acc.type)}
+                style={{
+                  width: 120,
+                  marginRight: 16,
+                  backgroundColor: "#222",
+                  borderRadius: 12,
+                  padding: 12,
+                  justifyContent: "center",
+                  alignItems: "center",
+                }}
+              >
+
+                <Text style={{ color: "#fff", fontWeight: "600", marginBottom: 8 }}>
+                  {acc.name}
+                </Text>
+
+                <View
+                  style={{
+                    height: 10,
+                    width: "100%",
+                    backgroundColor: "#333",
+                    borderRadius: 5,
+                    overflow: "hidden",
+                    marginBottom: 8,
+                  }}
+                >
+
+                  <View
+                    style={{
+                      height: "100%",
+                      // Fill each bar based on the largest asset in this top-three list.
+                      width: `${(acc.population / assetBreakdown[0].population) * 100}%`,
+                      backgroundColor: acc.color,
+                      borderRadius: 5,
+                    }}
+                  />
+
+                </View>
+
+                <Text style={{ color: "#aaa", fontSize: 12 }}>
+                  ${acc.population.toFixed(2)} (
+                  {(
+                    (acc.population /
+                      assetBreakdown.reduce((sum, a) => sum + a.population, 0)) *
+                    100
+                  ).toFixed(1)}
+                  %)
+                </Text>
+
+              </TouchableOpacity>
+
+            ))}
+
+          </ScrollView>
+
+          {selectedAssetType && (
+            <View
+              style={{
+                marginTop: 12,
+                borderWidth: 1,
+                borderColor: "#333",
+                borderRadius: 8,
+                overflow: "hidden",
+              }}
+            >
+
+              {/* Let the user choose how the account list should be ordered. */}
               <Picker
-                selectedValue={selected}
-                onValueChange={(value) => setSelected(value)}
+                selectedValue={sortOption}
+                onValueChange={(val) => setSortOption(val)}
                 dropdownIconColor="#7ef714"
                 style={{ color: "#fff" }}
               >
-                <Picker.Item label="Stocks" value="stocks" />
-                <Picker.Item label="Crypto" value="crypto" />
-                <Picker.Item label="Real Estate" value="realestate" />
+
+                <Picker.Item label="Sort by Balance" value="balance" />
+                <Picker.Item label="Sort Alphabetically" value="alpha" />
+
               </Picker>
+
             </View>
+          )}
 
-            <Text style={{ color: "#aaa", marginBottom: 8 }}>{titleMap[selected]}</Text>
+          {/* Account Details */}
 
-            <LineChart
-              data={{
-                labels: labelsMap[selected],
-                datasets: [{ data: chartData[selected] }],
+          {selectedAssetType && (
+            <View
+              style={{
+                marginTop: 16,
+                padding: 12,
+                backgroundColor: "#111",
+                borderRadius: 12,
               }}
-              width={screenWidth - 80}
-              height={170}
-              chartConfig={chartConfig}
-              style={{ borderRadius: 12 }}
-            />
+            >
+
+              {/* Show every account inside the selected asset group. */}
+              {sortedAccounts().map((acc, idx) => (
+
+                <View
+                  key={idx}
+                  style={{
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                    marginBottom: 8,
+                  }}
+                >
+
+                  <Text style={{ color: "#fff" }}>
+                    {acc.name}
+                  </Text>
+
+                  <Text style={{ color: "#aaa" }}>
+                    ${acc.balance_current.toFixed(2)} (
+                    {((acc.balance_current / totalSelectedAsset) * 100).toFixed(1)}%)
+                  </Text>
+
+                </View>
+
+              ))}
+
+            </View>
+          )}
+
+
           </View>
+          </View>
+          </ScrollView>
         </View>
-      </View>
+
+   
 
       {/* stocks page */}
       <View style={{ display: activeTab === "stocks" ? "flex" : "none" }}>
@@ -409,12 +612,5 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#fff",
     marginBottom: 12,
-  },
-  pickerWrapper: {
-    borderWidth: 1,
-    borderColor: "#2a2a2a",
-    borderRadius: 10,
-    marginBottom: 12,
-    overflow: "hidden",
   },
 });
