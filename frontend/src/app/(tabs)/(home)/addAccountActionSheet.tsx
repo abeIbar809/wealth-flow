@@ -113,7 +113,10 @@ export default function AddAccountActionSheet() {
             <TouchableOpacity
               className={`w-5/6 h-[40] rounded-2xl mt-3 items-center justify-center flex-row border border-[#03BF62] ${isLinking ? "opacity-50" : ""
                 }`}
-              onPress={() => { }}
+              onPress={() => { 
+                router.dismiss();
+                router.push("/addManualAccountPopup");
+              }}
               disabled={isLinking}
             >
               <Ionicons name="add-circle-outline" size={18} color="#03BF62" />

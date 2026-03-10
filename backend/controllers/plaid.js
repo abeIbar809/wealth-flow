@@ -3,6 +3,7 @@ import Account from "../models/account.js";
 import Transaction from "../models/transaction.js";
 import { PlaidClient } from "../lib/plaidClient.js";
 import { CountryCode, Products } from "plaid";
+import crypto from 'crypto';
 
 // Create a link token for Plaid Link
 const getLinkToken = async (req, res) => {
@@ -158,6 +159,8 @@ const syncAccounts = async (req, res) => {
     const updatedAccounts = [];
 
     for (const bank of banks) {
+      if (bank.is_manual) continue;
+
       try {
         const response = await PlaidClient.accountsGet({
           access_token: bank.plaid_access_token,
@@ -234,16 +237,20 @@ const syncTransactions = async (req, res) => {
     let allTransactions = [];
 
     for (const bank of banks) {
+      if (bank.is_manual) {
+        console.log(`Skipping manual bank ${bank._id}`);
+        continue;
+      }
+      
       try {
         let hasMore = true;
         let cursor = bank.cursor;
 
         while (hasMore) {
           // plaid client transaction sync
-          const response = await PlaidClient.transactionsSync({
-            access_token: bank.plaid_access_token,
-            cursor: cursor,
-          });
+          const payload = { access_token: bank.plaid_access_token };
+          if (cursor) payload.cursor = cursor; // don't send null on first sync
+          const response = await PlaidClient.transactionsSync(payload);
 
           const { added, modified, removed, next_cursor, has_more } = response.data;
 
@@ -314,7 +321,7 @@ const syncTransactions = async (req, res) => {
         bank.lastSynced = new Date();
         await bank.save();
       } catch (bankError) {
-        console.error(`Error syncing transactions for bank ${bank._id}:`, bankError);
+        console.error(`Error syncing transactions for bank ${bank._id}:`, bankError?.response?.data || bankError);
       }
     }
 
@@ -366,6 +373,160 @@ const getTransactions = async (req, res) => {
   }
 };
 
+const createManualBank = async (req, res) => {
+  const { userId } = req.params;
+
+  const { institution_name, accounts = [] } = req.body;
+
+  if (!userId) return res.status(400).json({ message: "User ID is required" });
+
+  if (!institution_name?.trim()) {
+    return res.status(400).json({ message: "institution_name is required" });
+  }
+
+  if (!Array.isArray(accounts) || accounts.length === 0) {
+    return res.status(400).json({ message: "At least one account is required" });
+  }
+
+  try {
+    // Generate required Bank fields your schema requires but user won't know
+    const institution_id = `manual_${crypto.randomUUID()}`;
+    const plaid_access_token = `manual_access_${crypto.randomUUID()}`;
+    const plaid_item_id = `manual_item_${crypto.randomUUID()}`;
+
+    const bank = new Bank({
+      institution_id,
+      institution_name: institution_name.trim(),
+      plaid_access_token,
+      plaid_item_id,
+      owner: userId,
+      cursor: null,
+      lastSynced: null,
+      status: "active",
+      is_manual: true,
+    });
+
+    await bank.save();
+
+    // Create accounts tied to this bank
+    for (const a of accounts) {
+      if (!a?.name?.trim() || !a?.type) {
+        return res.status(400).json({ message: "Each account requires name and type" });
+      }
+
+      const balance_current = Number(a.balance_current);
+      if (Number.isNaN(balance_current)) {
+        return res.status(400).json({ message: "balance_current must be a number" });
+      }
+
+      const account = new Account({
+        plaid_account_id: null,
+        bank: bank._id,
+        owner: userId,
+
+        name: a.name.trim(),
+        official_name: null,
+        type: a.type,
+        subtype: a.subtype ?? null,
+        mask: null, // removed from user form
+
+        balance_available: null,
+        balance_current,
+        balance_limit: null,
+        currency: (a.currency ?? "USD").trim(),
+
+        institution_name: bank.institution_name,
+        institution_id: bank.institution_id,
+
+        isLinked: true,
+        is_manual: true,
+      });
+
+      await account.save();
+    }
+
+    const populatedAccounts = await Account.find({ bank: bank._id })
+      .populate("bank", "institution_name status")
+      .sort({ createdAt: -1 });
+
+    return res.status(201).json({
+      message: "Manual bank + accounts created successfully",
+      bankId: bank._id,
+      accounts: populatedAccounts,
+    });
+  } catch (error) {
+    console.error("Error creating manual bank:", error);
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+const createManualTransaction = async (req, res) => {
+  const { userId } = req.params;
+  const {
+    accountId,
+    name,
+    amount,
+    date,
+    transaction_type = "expense", // "income" | "expense" | "transfer" | "other"
+    merchant_name = null,
+    category = [],
+    payment_channel = "other",
+    currency = "USD",
+    personal_finance_category = null,
+  } = req.body;
+
+  if (!userId) return res.status(400).json({ message: "User ID is required" });
+  if (!accountId) return res.status(400).json({ message: "accountId is required" });
+  if (!name?.trim()) return res.status(400).json({ message: "name is required" });
+  if (amount === undefined || amount === null) {
+    return res.status(400).json({ message: "amount is required" });
+  }
+  if (!date) return res.status(400).json({ message: "date is required" });
+
+  const parsedAmount = Number(amount);
+  if (Number.isNaN(parsedAmount)) {
+    return res.status(400).json({ message: "amount must be a number" });
+  }
+
+  // Make sure the account belongs to this user
+  const account = await Account.findOne({ _id: accountId, owner: userId });
+  if (!account) return res.status(404).json({ message: "Account not found" });
+
+  // Keep behavior consistent: your sync logic treats negative as income.
+  // If user picks income and enters a positive number, store it negative.
+  let finalAmount = parsedAmount;
+  if (transaction_type === "income" && parsedAmount > 0) finalAmount = -parsedAmount;
+
+  const plaid_transaction_id = `manual_txn_${crypto.randomUUID()}`;
+
+  const txn = await Transaction.create({
+    plaid_transaction_id,
+    account: account._id,
+    owner: userId,
+    name: name.trim(),
+    merchant_name,
+    amount: finalAmount,
+    date: new Date(date),
+    authorized_date: null,
+    category: Array.isArray(category) ? category : [],
+    category_id: null,
+    personal_finance_category: personal_finance_category ?? null,
+    pending: false,
+    payment_channel,
+    transaction_type,
+    logo_url: null,
+    website: null,
+    currency,
+  });
+
+  const populated = await Transaction.findById(txn._id).populate(
+    "account",
+    "name institution_name mask type"
+  );
+
+  return res.status(201).json({ message: "Transaction added", transaction: populated });
+};
+
 // Determine the transaction type based on amount and category
 function determineTransactionType(txn) {
   // plaid amounts: positive = money out, negative = money in
@@ -389,4 +550,6 @@ export default {
   syncAccounts,
   getTransactions,
   syncTransactions,
+  createManualBank,
+  createManualTransaction
 };

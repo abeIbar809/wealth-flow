@@ -4,7 +4,7 @@ import express from "express";
 import cors from "cors";
 import userrouter from "./routes/users.js";
 import plaidRoutes from "./routes/plaid.js";
-
+import expensesRouter from './routes/expenses.js';
 const app = express();
 
 // Middleware
@@ -216,6 +216,7 @@ app.get("/backend-test", async (req, res) => {
 
 app.use("/api/plaid", plaidRoutes);
 app.use("/users", userrouter);
+app.use("/api/expenses", expensesRouter)
 
 // Start Server
 const port = process.env.PORT || 9000;

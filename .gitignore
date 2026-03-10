@@ -1,45 +1,83 @@
-# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
-
-# dependencies
+# ------------------------------------------------------------
+# Dependencies
+# ------------------------------------------------------------
 node_modules/
 
-# Expo
-/frontend/.expo
-dist/
-web-build/
-expo-env.d.ts
+# ------------------------------------------------------------
+# Expo / React Native
+# ------------------------------------------------------------
 .expo/
+.expo-shared/
+expo-env.d.ts
 
-# Native
-.kotlin/
-*.orig.*
+# Expo / RN build outputs
+dist/
+build/
+web-build/
+
+# Metro / bundler caches
+.metro-cache/
+.metro-health-check*
+.cache/
+
+# ------------------------------------------------------------
+# Native build outputs (Android / iOS)
+# ------------------------------------------------------------
+android/**/build/
+android/**/.cxx/
+android/**/.gradle/
+android/**/local.properties
+ios/build/
+
+# If you do NOT want to track native projects at all (managed Expo):
+ios/
+android/
+
+# ------------------------------------------------------------
+# Secrets / environment files
+# ------------------------------------------------------------
+.env
+.env.*
+*.env
+**/.env*.local
+!.env.example
+
+# ------------------------------------------------------------
+# Keys / signing / certificates (never commit)
+# ------------------------------------------------------------
 *.jks
 *.p8
 *.p12
 *.key
 *.mobileprovision
+*.pem
 
-# Metro
-.metro-health-check*
-
-# debug
+# ------------------------------------------------------------
+# Logs / debug
+# ------------------------------------------------------------
 npm-debug.*
 yarn-debug.*
 yarn-error.*
+*.log
 
-# macOS
-.DS_Store
-*.pem
+# ------------------------------------------------------------
+# Tooling / IDEs
+# ------------------------------------------------------------
+.idea/
+.vscode/
 
-# local env files
-*.env
-**/.env*.local
-
-# typescript
+# ------------------------------------------------------------
+# TypeScript / misc
+# ------------------------------------------------------------
 *.tsbuildinfo
 
-app-example
+# ------------------------------------------------------------
+# OS junk
+# ------------------------------------------------------------
+.DS_Store
+Thumbs.db
 
-# generated native folders
-/frontend/ios
-/frontend/android
+# ------------------------------------------------------------
+# Project-specific
+# ------------------------------------------------------------
+app-example/

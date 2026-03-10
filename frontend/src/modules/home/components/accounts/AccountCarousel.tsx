@@ -1,11 +1,14 @@
+// frontend/src/modules/home/components/accounts/AccountCarousel.tsx
 import { AppText } from "@/src/components/common/app-text";
 import { Account } from "@/src/stores/useHomeStore";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { ScrollView, View } from "react-native";
+import { ScrollView, TouchableOpacity, View } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
+
 interface AccounCarouselComponentProps {
-  data: Account[]
+  data: Account[];
   isLoading?: boolean;
+  onAccountPress?: (account: Account) => void; // ✅ add this
 }
 
 // Format currency
@@ -18,9 +21,7 @@ const formatCurrency = (amount: number, showSign: boolean = false): string => {
     maximumFractionDigits: 0,
   }).format(absAmount);
 
-  if (showSign && amount < 0) {
-    return `${formatted}`;
-  }
+  if (showSign && amount < 0) return `${formatted}`;
   return formatted;
 };
 
@@ -47,9 +48,7 @@ const capitalizeFirstLetter = (string: string) => {
   return string.charAt(0).toUpperCase() + string.slice(1);
 };
 
-
-
-export default function AccountCarouselComponent({ ...props }: AccounCarouselComponentProps) {
+export default function AccountCarouselComponent(props: AccounCarouselComponentProps) {
   const bgColors = [
     "bg-[#03bf62]",
     "bg-[#00a97d]",
@@ -59,50 +58,55 @@ export default function AccountCarouselComponent({ ...props }: AccounCarouselCom
     "bg-[#2f4858]",
   ];
 
+  if (props.data.length === 0) {
+    return (
+      <View className="px-4 py-6">
+        <AppText>Link a Bank Account to get started !</AppText>
+      </View>
+    );
+  }
+
   return (
-    <Animated.View entering={FadeIn.duration(1000)} className="h-[200] ">
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}
+    >
+      {props.data.map((acct, index) => {
+        const bg = bgColors[index % bgColors.length];
 
-      {props.data.length === 0 ?
-        (<>
-          <View className=" h-[200] items-center justify-center ">
-            <Ionicons name="link-outline" style={{ color: "green" }} size={40}></Ionicons>
-            <AppText className="font-bold">Link a Bank Account to get started !</AppText>
-          </View>
-        </>) :
-        (<>
-          <ScrollView horizontal={true}>
-            {Array.from({ length: props.data.length }).map((col, index) => {
-              return (
-                <View
-                  className={`w-[125] h-[180] ${bgColors[index % 6]
-                    } ml-8 rounded-[18] justify-between shadow-m p-3  `}
-                  key={index}
-                >
-                  <View className=" h-[40]  rounded-[13] bg-white opacity-90 items-start justify-center pl-3">
-                    <Ionicons name={getAccountIcon(props.data[index].type)} size={15}></Ionicons>
-                    <AppText className=" font-medium">{capitalizeFirstLetter(props.data[index].type)}</AppText>
-                  </View>
-
-
-                  <View className="">
-                    <AppText.Caption className=" text-white font-medium" >
-                      {formatCurrency(props.data[index].balance, true)}
-                    </AppText.Caption>
-                    <AppText.Caption className=" text-white font-medium" numberOfLines={1}>
-                      {props.data[index].name}
-                    </AppText.Caption>
-                    <AppText.Caption className=" text-white font-medium">
-                      {props.data[index].institutionName}
-                    </AppText.Caption>
-                    <AppText.Caption className=" text-white font-medium ">
-                      {props.data[index].currency}
-                    </AppText.Caption>
-                  </View>
+        return (
+          <TouchableOpacity
+            key={acct._id}
+            activeOpacity={0.85}
+            onPress={() => props.onAccountPress?.(acct)} // ✅ click handler
+          >
+            <Animated.View
+              entering={FadeIn.duration(250)}
+              className={`w-72 rounded-2xl p-4 ${bg}`}
+            >
+              <View className="flex-row items-center justify-between">
+                <View className="flex-row items-center gap-2">
+                  <Ionicons name={getAccountIcon(acct.type)} size={18} color="white" />
+                  <AppText className="text-white opacity-90">
+                    {capitalizeFirstLetter(acct.type)}
+                  </AppText>
                 </View>
-              );
-            })}
-          </ScrollView>
-        </>)}
-    </Animated.View>
+
+                <AppText className="text-white text-lg font-semibold">
+                  {formatCurrency(acct.balance, true)}
+                </AppText>
+              </View>
+
+              <View className="mt-4">
+                <AppText className="text-white text-base font-semibold">{acct.name}</AppText>
+                <AppText className="text-white opacity-80">{acct.institutionName}</AppText>
+                <AppText className="text-white opacity-80">{acct.currency}</AppText>
+              </View>
+            </Animated.View>
+          </TouchableOpacity>
+        );
+      })}
+    </ScrollView>
   );
 }
