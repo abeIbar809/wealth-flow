@@ -94,6 +94,8 @@ const CustomNavBar: React.FC<BottomTabBarProps> = ({
         return <Ionicons name="pie-chart" size={18} color={color} />;
       case "(planner)":
         return <Ionicons name="git-branch" size={18} color={color} />;
+      case "(debt)":
+        return <Ionicons name="card" size={18} color={color} />;
       default:
         return <Feather name="home" size={18} color={color} />;
     }

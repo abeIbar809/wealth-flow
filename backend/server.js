@@ -188,6 +188,115 @@ app.delete("/api/posts/:postId/replies/:replyId", async (req, res) => {
   }
 });
 
+
+//Debt Schema and models
+const DebtSchema = new mongoose.Schema({
+  userId: {
+    type: String,
+    required: true,
+  },
+  name: {
+    type: String,
+    required: true,
+  },
+  totalAmount: {
+    type: Number,
+    required: true,
+  },
+  remainingAmount: {
+    type: Number,
+    required: true,
+  },
+  interestRate: {
+    type: Number,
+    default: 0,
+  },
+  paymentFrequency: {
+    type: String,
+    enum: ["weekly", "bi-weekly", "monthly"],
+    default: "monthly",
+  },
+  paymentAmount: {
+    type: Number,
+    required: true,
+  },
+  extraPayments: {
+    type: Number,
+    default: 0,
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now,
+  },
+});
+
+const Debt = mongoose.model("Debt", DebtSchema);
+
+// Get all debts for a user
+app.get("/api/debts/:userId", async (req, res) => {
+  try {
+    const debts = await Debt.find({ userId: req.params.userId }).sort({ totalAmount: -1 });
+    res.json(debts);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Create a debt
+app.post("/api/debts", async (req, res) => {
+  try {
+    const debt = new Debt(req.body);
+    await debt.save();
+    res.status(201).json(debt);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Edit a debt
+app.patch("/api/debts/:id", async (req, res) => {
+  try {
+    const debt = await Debt.findById(req.params.id);
+    if (!debt) return res.status(404).json({ error: "Debt not found" });
+
+    // If totalAmount changed, adjust remainingAmount by the difference
+    if (req.body.totalAmount !== undefined && req.body.totalAmount !== debt.totalAmount) {
+      const difference = req.body.totalAmount - debt.totalAmount;
+      req.body.remainingAmount = Math.max(0, debt.remainingAmount + difference);
+    }
+
+    const updated = await Debt.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    res.json(updated);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Delete a debt
+app.delete("/api/debts/:id", async (req, res) => {
+  try {
+    await Debt.findByIdAndDelete(req.params.id);
+    res.json({ message: "Debt deleted" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Make an extra payment towards a debt
+app.post("/api/debts/:id/payment", async (req, res) => {
+  try {
+    const { amount } = req.body;
+    const debt = await Debt.findById(req.params.id);
+    if (!debt) return res.status(404).json({ error: "Debt not found" });
+    debt.remainingAmount = Math.max(0, debt.remainingAmount - amount);
+    debt.extraPayments   = (debt.extraPayments || 0) + amount;
+    await debt.save();
+    res.json(debt);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 //Server demo
 app.get("/backend-test", async (req, res) => {
   try {
