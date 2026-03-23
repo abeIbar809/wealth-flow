@@ -7,6 +7,7 @@ import NetWorthCardComponent from "@/src/modules/home/components/dashboard/NetWo
 import NetWorthBarChartComponent from "@/src/modules/home/components/dashboard/NetWorthGrowthBarChar";
 import { useHomeStore } from "@/src/stores/useHomeStore";
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React, { useEffect, useCallback } from "react";
@@ -15,8 +16,12 @@ import ExpensePieChart from "@/src/components/ExpensePieChart";
 import { AppText } from "@/src/components/common/app-text";
 import * as Haptics from "expo-haptics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import CurrencyConverterCard from "@/src/components/common/currency-converter-card";
 
 export default function HomeIndex() {
+  const insets = useSafeAreaInsets();
+  const tabBarHeight = useBottomTabBarHeight();
 
   const {
     accounts,
@@ -62,8 +67,8 @@ export default function HomeIndex() {
   return (
     <>
       <StatusBar style="auto" />
+
       <ScrollView
-        nestedScrollEnabled={true}
         style={{ flex: 1 }}
         className="bg-white"
         refreshControl={
@@ -146,7 +151,11 @@ export default function HomeIndex() {
         <View style={{ marginTop: 24, paddingHorizontal: 16, paddingBottom: 24 }}>
           <ExpensePieChart />
         </View>
+
+        <View style={{ paddingHorizontal: 16, marginTop: 8 , marginBottom: 150}}>
+            <CurrencyConverterCard />
+        </View>
+
       </ScrollView>
     </>
-  );
-}
+  )};
