@@ -7,6 +7,8 @@ import weeklyGoalRouter from "./routes/weeklyGoals.js";
 import plaidRoutes from "./routes/plaid.js";
 import stocksRouter from "./routes/stocks.js"
 import weeklySummaryRouter from "./routes/weeklySummary.js";
+import expensesRouter from "./routes/expenses.js";
+import insightRoutes from "./routes/insight.js";
 
 const app = express();
 
@@ -331,6 +333,8 @@ app.use("/api/plaid", plaidRoutes);
 app.use("/api/stocks", stocksRouter);
 app.use("/users", userrouter);
 app.use("/api/expenses", expensesRouter)
+console.log("Registering /api/insights route");
+app.use("/api/insights", insightRoutes);
 app.use("/weeklygoals", weeklyGoalRouter);
 app.use("/weeklysummary", weeklySummaryRouter);
 

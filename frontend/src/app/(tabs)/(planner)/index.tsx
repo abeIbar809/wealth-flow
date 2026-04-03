@@ -11,6 +11,7 @@ import {
 import useGoalsStore from "@/src/stores/useGoalsStore";
 import useSummaryStore from "@/src/stores/useSummaryStore";
 import useAuthStore from "@/src/stores/useAuthStore";
+import { getInsights } from "@/src/api/insights"; 
 
 const CATEGORIES = ["Groceries", "Dining", "Entertainment", "Transport", "Shopping", "Other"];
 
@@ -19,16 +20,37 @@ const FinancialPlanner: React.FC = () => {
   const { weeklyGoal, isLoading: goalsLoading, createWeeklyGoal, updateWeeklyGoal } = useGoalsStore();
   const { summary, isLoading: summaryLoading, fetchWeeklySummary } = useSummaryStore();
 
-  const [activeTab, setActiveTab] = useState<"goals" | "summary">("goals");
+  const [activeTab, setActiveTab] = useState<"goals" | "summary" | "insights">("goals");
+
   const [limits, setLimits] = useState<{ [key: string]: string }>({});
   const [spentAmounts, setSpentAmounts] = useState<{ [key: string]: string }>({});
   const [isSettingGoals, setIsSettingGoals] = useState(true);
+
+  const [insights, setInsights] = useState<any>(null);
+  const [insightsLoading, setInsightsLoading] = useState(false);
 
   useEffect(() => {
     if (activeTab === "summary" && user?._id) {
       fetchWeeklySummary(user._id);
     }
+
+    if (activeTab === "insights" && user?._id) {
+      loadInsights();
+    }
   }, [activeTab]);
+
+  const loadInsights = async () => {
+    try {
+      if (!user?._id) return;
+      setInsightsLoading(true);
+      const res = await getInsights(user._id);
+      setInsights(res.data.insights);
+    } catch (err) {
+      console.error("Insights error:", err);
+    } finally {
+      setInsightsLoading(false);
+    }
+  };
 
   const handleSaveGoals = async () => {
     const goals = CATEGORIES.map((cat) => ({
@@ -75,7 +97,7 @@ const FinancialPlanner: React.FC = () => {
     <ScrollView style={styles.container}>
       <Text style={styles.header}>Weekly Planner</Text>
 
-      {/* Tab Switcher */}
+      {/* Tabs */}
       <View style={styles.tabContainer}>
         <TouchableOpacity
           style={[styles.tab, activeTab === "goals" && styles.activeTab]}
@@ -85,6 +107,7 @@ const FinancialPlanner: React.FC = () => {
             Goals
           </Text>
         </TouchableOpacity>
+
         <TouchableOpacity
           style={[styles.tab, activeTab === "summary" && styles.activeTab]}
           onPress={() => setActiveTab("summary")}
@@ -93,9 +116,18 @@ const FinancialPlanner: React.FC = () => {
             Summary
           </Text>
         </TouchableOpacity>
+
+        {/* Insights Tab */}
+        <TouchableOpacity
+          style={[styles.tab, activeTab === "insights" && styles.activeTab]}
+          onPress={() => setActiveTab("insights")}
+        >
+          <Text style={[styles.tabText, activeTab === "insights" && styles.activeTabText]}>
+            Insights
+          </Text>
+        </TouchableOpacity>
       </View>
 
-      {/* GOALS TAB */}
       {activeTab === "goals" && (
         <>
           {isSettingGoals ? (
@@ -186,7 +218,7 @@ const FinancialPlanner: React.FC = () => {
         </>
       )}
 
-      {/* SUMMARY TAB */}
+      {/* Summary Tab */}
       {activeTab === "summary" && (
         <>
           {summaryLoading ? (
@@ -239,6 +271,51 @@ const FinancialPlanner: React.FC = () => {
             </>
           ) : (
             <Text style={styles.loadingText}>No transaction data available yet.</Text>
+          )}
+        </>
+      )}
+
+      {/* Insights Tab */}
+      {activeTab === "insights" && (
+        <>
+          {insightsLoading ? (
+            <Text style={styles.loadingText}>Analyzing your finances...</Text>
+          ) : insights ? (
+            <>
+              <View style={styles.card}>
+                <Text style={styles.cardTitle}>📈 Trends</Text>
+                <Text style={styles.summaryValue}>{insights.trends}</Text>
+              </View>
+
+              <View style={styles.card}>
+                <Text style={styles.cardTitle}>⚠️ Risks</Text>
+                <Text style={[styles.summaryValue, styles.expense]}>
+                  {insights.risks}
+                </Text>
+              </View>
+
+              <View style={styles.card}>
+                <Text style={styles.cardTitle}>💡 Opportunities</Text>
+                <Text style={styles.summaryValue}>
+                  {insights.savings_opportunities}
+                </Text>
+              </View>
+
+              <View style={styles.card}>
+                <Text style={styles.cardTitle}>✅ Recommendations</Text>
+                {insights.recommendations?.map((rec: string, i: number) => (
+                  <Text key={i} style={styles.summaryValue}>
+                    • {rec}
+                  </Text>
+                ))}
+              </View>
+
+              <TouchableOpacity style={styles.button} onPress={loadInsights}>
+                <Text style={styles.buttonText}>Refresh Insights</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <Text style={styles.loadingText}>No insights available.</Text>
           )}
         </>
       )}
