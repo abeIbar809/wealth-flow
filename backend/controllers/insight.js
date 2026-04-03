@@ -3,7 +3,6 @@ import { generateFinancialInsights } from "../lib/gemini.js";
 
 export const getInsights = async (req, res) => {
   try {
-    // ⚠️ TEMP: replace with real auth later
     const userId = req.query.userId; 
 
     if (!userId) {
@@ -26,7 +25,6 @@ export const getInsights = async (req, res) => {
       });
     }
 
-    // 2. 🔥 Aggregate data
     const totalSpent = transactions.reduce((sum, t) => sum + t.amount, 0);
 
     const categoryMap = {};
@@ -45,7 +43,6 @@ export const getInsights = async (req, res) => {
       recentTransactions: transactions.slice(0, 20),
     };
 
-    // ✅ 3. CALL GEMINI HERE
     const insights = await generateFinancialInsights(enrichedData);
 
     // 4. Send response
