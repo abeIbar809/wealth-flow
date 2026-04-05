@@ -22,15 +22,46 @@ interface GoalsState {
   fetchCurrentGoals: (userId: string) => Promise<void>;
   createWeeklyGoal: (userId: string, goals: Goal[]) => Promise<boolean>;
   updateWeeklyGoal: (id: string, goals: Goal[]) => Promise<boolean>;
+  syncFromPlaid: (userId: string) => Promise<boolean>;
   clearError: () => void;
 }
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL!;
 
-const useGoalsStore = create<GoalsState>((set) => ({
+const useGoalsStore = create<GoalsState>((set, get) => ({
   weeklyGoal: null,
   isLoading: false,
   error: null,
+
+  //fetches this week's spending from plaid transactions and overwrites spent amounts on current goals
+  syncFromPlaid: async (userId: string): Promise<boolean> => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await fetch(`${API_BASE_URL}/weeklygoals/sync-spending/${userId}`);
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.message || "Failed to sync spending");
+      }
+      const { spending } = await response.json();
+
+      const { weeklyGoal, updateWeeklyGoal } = get();
+      if (!weeklyGoal?._id) {
+        set({ error: "No active weekly goals to sync", isLoading: false });
+        return false;
+      }
+
+      //overwrite each goal's spent amount with the plaid-derived total
+      const updatedGoals = weeklyGoal.goals.map((g) => ({
+        ...g,
+        spent: spending[g.category] ?? g.spent,
+      }));
+
+      return await updateWeeklyGoal(weeklyGoal._id, updatedGoals);
+    } catch (error: any) {
+      set({ error: error.message, isLoading: false });
+      return false;
+    }
+  },
 
   clearError: () => set({ error: null }),
 

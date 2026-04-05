@@ -1,4 +1,18 @@
 import WeeklyGoal from './../models/weeklyGoal.js'
+import Transaction from './../models/transaction.js'
+import Bank from './../models/bank.js'
+
+//maps plaid personal_finance_category to goal category names
+const mapToGoalCategory = (primary = '', detailed = '') => {
+    const p = primary.toUpperCase();
+    const d = detailed.toUpperCase();
+    if (p === 'FOOD_AND_DRINK' && d.includes('GROCERIES')) return 'Groceries';
+    if (p === 'FOOD_AND_DRINK') return 'Dining';
+    if (p === 'TRANSPORTATION' || p === 'TRAVEL') return 'Transport';
+    if (p === 'ENTERTAINMENT' || p === 'RECREATION') return 'Entertainment';
+    if (p === 'GENERAL_MERCHANDISE' || p === 'CLOTHING_AND_ACCESSORIES') return 'Shopping';
+    return 'Other';
+};
 
 const getWeeklyGoals = async (req, res) => {
     const { userId } = req.params;
@@ -55,4 +69,45 @@ const deleteWeeklyGoal = async (req, res) => {
     }
 }
 
-export default { getWeeklyGoals, getCurrentWeekGoals, createWeeklyGoal, updateWeeklyGoal, deleteWeeklyGoal };
+//queries this week's expense transactions and returns spending totals per goal category
+const syncSpendingFromPlaid = async (req, res) => {
+    const { userId } = req.params;
+
+    try {
+        //check if user has a linked (non-manual) bank
+        const linkedBank = await Bank.findOne({ owner: userId, status: 'active', is_manual: false });
+        if (!linkedBank) {
+            return res.status(400).json({ message: 'No linked bank account found. Connect a bank via Plaid to sync spending.' });
+        }
+
+        //get current week date range
+        const now = new Date();
+        const startOfWeek = new Date(now);
+        startOfWeek.setDate(now.getDate() - now.getDay());
+        startOfWeek.setHours(0, 0, 0, 0);
+        const endOfWeek = new Date(startOfWeek);
+        endOfWeek.setDate(startOfWeek.getDate() + 7);
+
+        //fetch this week's expense transactions
+        const transactions = await Transaction.find({
+            owner: userId,
+            transaction_type: 'expense',
+            date: { $gte: startOfWeek, $lt: endOfWeek },
+        });
+
+        //tally spending into goal categories
+        const spending = { Groceries: 0, Dining: 0, Entertainment: 0, Transport: 0, Shopping: 0, Other: 0 };
+        for (const txn of transactions) {
+            const primary = txn.personal_finance_category?.primary || '';
+            const detailed = txn.personal_finance_category?.detailed || '';
+            const category = mapToGoalCategory(primary, detailed);
+            spending[category] += Math.abs(txn.amount);
+        }
+
+        res.status(200).json({ spending, transactionCount: transactions.length });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+export default { getWeeklyGoals, getCurrentWeekGoals, createWeeklyGoal, updateWeeklyGoal, deleteWeeklyGoal, syncSpendingFromPlaid };
