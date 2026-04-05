@@ -8,9 +8,18 @@ import {
   ScrollView,
   Alert,
 } from "react-native";
+import Svg, { Circle, G } from "react-native-svg";
 import useGoalsStore from "@/src/stores/useGoalsStore";
 import useSummaryStore from "@/src/stores/useSummaryStore";
 import useAuthStore from "@/src/stores/useAuthStore";
+
+//format category names for display
+const formatCategory = (category: string): string => {
+  const formatted = category.replace(/_/g, ' ').toLowerCase();
+  return formatted.charAt(0).toUpperCase() + formatted.slice(1);
+};
+
+const CATEGORY_COLORS = ["#2b67ff", "#03BF62", "#FF9500", "#FF3B30", "#8E44AD", "#16A085"];
 
 const CATEGORIES = ["Groceries", "Dining", "Entertainment", "Transport", "Shopping", "Other"];
 
@@ -71,8 +80,66 @@ const FinancialPlanner: React.FC = () => {
     return "#03BF62";
   };
 
+  //render donut chart
+  const renderDonutChart = () => {
+    if (!summary) return null;
+
+    const categories = Object.entries(summary.thisWeek.byCategory);
+    const total = summary.thisWeek.expenses;
+    
+    if (total === 0) return null;
+
+    const radius = 70;
+    const strokeWidth = 20;
+    const center = 90;
+    const circumference = 2 * Math.PI * radius;
+
+    let currentAngle = -90;
+
+    return (
+      <View style={styles.donutContainer}>
+        <Svg width={180} height={180}>
+          <G rotation={0} origin={`${center}, ${center}`}>
+            {categories.map(([category, amount], index) => {
+              const percentage = (amount / total) * 100;
+              const angle = (percentage / 100) * 360;
+              const dashArray = `${(percentage / 100) * circumference} ${circumference}`;
+              const rotation = currentAngle;
+              
+              currentAngle += angle;
+
+              return (
+                <Circle
+                  key={category}
+                  cx={center}
+                  cy={center}
+                  r={radius}
+                  stroke={CATEGORY_COLORS[index % CATEGORY_COLORS.length]}
+                  strokeWidth={strokeWidth}
+                  fill="transparent"
+                  strokeDasharray={dashArray}
+                  strokeDashoffset={0}
+                  rotation={rotation}
+                  origin={`${center}, ${center}`}
+                />
+              );
+            })}
+          </G>
+        </Svg>
+        <View style={styles.donutCenter}>
+          <Text style={styles.donutCenterAmount}>${total.toFixed(2)}</Text>
+          <Text style={styles.donutCenterLabel}>Total</Text>
+        </View>
+        {/* Date Label Below Donut */}
+        <Text style={styles.weekDateLabel}>
+          As of {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+        </Text>
+      </View>
+    );
+  };
+
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
       <Text style={styles.header}>Weekly Planner</Text>
 
       {/* Tab Switcher */}
@@ -193,6 +260,14 @@ const FinancialPlanner: React.FC = () => {
             <Text style={styles.loadingText}>Loading summary...</Text>
           ) : summary ? (
             <>
+              {/* TOTAL SPENT - TOP CARD */}
+              <View style={[styles.card, styles.totalSpentCard]}>
+                <Text style={styles.totalSpentLabel}>Total Spent This Week</Text>
+                <Text style={styles.totalSpentAmount}>
+                  ${summary.thisWeek.expenses.toFixed(2)}
+                </Text>
+              </View>
+
               <View style={styles.card}>
                 <Text style={styles.cardTitle}>This Week</Text>
                 <View style={styles.summaryRow}>
@@ -215,14 +290,28 @@ const FinancialPlanner: React.FC = () => {
                 </View>
               </View>
 
+              {/* SPENDING BY CATEGORY WITH DONUT CHART */}
               <View style={styles.card}>
                 <Text style={styles.cardTitle}>Spending by Category</Text>
-                {Object.entries(summary.thisWeek.byCategory).map(([category, amount]) => (
-                  <View key={category} style={styles.summaryRow}>
-                    <Text style={styles.categoryLabel}>{category}</Text>
-                    <Text style={styles.summaryValue}>${amount.toFixed(2)}</Text>
-                  </View>
-                ))}
+                
+                {/* Donut Chart */}
+                {renderDonutChart()}
+
+                {/* Category Legend */}
+                <View style={styles.legendContainer}>
+                  {Object.entries(summary.thisWeek.byCategory).map(([category, amount], index) => (
+                    <View key={category} style={styles.legendRow}>
+                      <View 
+                        style={[
+                          styles.legendColor, 
+                          { backgroundColor: CATEGORY_COLORS[index % CATEGORY_COLORS.length] }
+                        ]} 
+                      />
+                      <Text style={styles.legendLabel}>{formatCategory(category)}</Text>
+                      <Text style={styles.legendValue}>${amount.toFixed(2)}</Text>
+                    </View>
+                  ))}
+                </View>
               </View>
 
               <View style={styles.card}>
@@ -250,6 +339,9 @@ export default FinancialPlanner;
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, backgroundColor: "#f5f5f5" },
+  scrollContent: {
+    paddingBottom: 120
+  },
   header: { fontSize: 24, fontWeight: "bold", color: "#000", marginBottom: 15 },
   tabContainer: { flexDirection: "row", marginBottom: 20, backgroundColor: "#e0e0e0", borderRadius: 8, padding: 4 },
   tab: { flex: 1, paddingVertical: 10, alignItems: "center", borderRadius: 6 },
@@ -278,4 +370,74 @@ const styles = StyleSheet.create({
   summaryValue: { fontSize: 15, fontWeight: "500", color: "#333" },
   income: { color: "#03BF62" },
   expense: { color: "#FF3B30" },
+  totalSpentCard: { 
+    backgroundColor: "#2b67ff", 
+    alignItems: "center", 
+    paddingVertical: 20 
+  },
+  totalSpentLabel: { 
+    fontSize: 14, 
+    color: "#fff", 
+    marginBottom: 5, 
+    textTransform: "uppercase", 
+    letterSpacing: 1 
+  },
+  totalSpentAmount: { 
+    fontSize: 36, 
+    fontWeight: "bold", 
+    color: "#fff" 
+  },
+  donutContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    marginVertical: 20,
+    position: "relative"
+  },
+  donutCenter: {
+    position: "absolute",
+    width: 180,
+    height: 180,
+    alignItems: "center",
+    justifyContent: "center",
+    top: 0
+  },
+  donutCenterAmount: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#333"
+  },
+  donutCenterLabel: {
+    fontSize: 12,
+    color: "#666"
+  },
+  weekDateLabel: {
+    fontSize: 12,
+    color: "#666",
+    marginTop: 0,
+    textAlign: "center"
+  },
+  legendContainer: {
+    marginTop: 20
+  },
+  legendRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: 6
+  },
+  legendColor: {
+    width: 16,
+    height: 16,
+    borderRadius: 3,
+    marginRight: 10
+  },
+  legendLabel: {
+    flex: 1,
+    fontSize: 14,
+    color: "#333"
+  },
+  legendValue: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#333"
+  }
 });
