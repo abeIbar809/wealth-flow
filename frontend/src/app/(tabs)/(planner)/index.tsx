@@ -9,9 +9,18 @@ import {
   Alert,
 } from "react-native";
 import Svg, { Circle, G } from "react-native-svg";
+import { Picker } from "@react-native-picker/picker";
 import useGoalsStore from "@/src/stores/useGoalsStore";
 import useSummaryStore from "@/src/stores/useSummaryStore";
 import useAuthStore from "@/src/stores/useAuthStore";
+import useTaxStore from "@/src/stores/useTaxStore";
+
+//format numbers with commas and 2 decimal places
+const formatCurrency = (num: number): string => {
+  const parts = num.toFixed(2).split('.');
+  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return parts.join('.');
+};
 
 //format category names for display
 const formatCategory = (category: string): string => {
@@ -23,12 +32,17 @@ const CATEGORY_COLORS = ["#2b67ff", "#03BF62", "#FF9500", "#FF3B30", "#8E44AD", 
 
 const CATEGORIES = ["Groceries", "Dining", "Entertainment", "Transport", "Shopping", "Other"];
 
+const FILING_STATUSES = ["Single", "Married Filing Jointly", "Head of Household"];
+
 const FinancialPlanner: React.FC = () => {
   const { user } = useAuthStore();
-  const { weeklyGoal, isLoading: goalsLoading, createWeeklyGoal, updateWeeklyGoal } = useGoalsStore();
+  const { weeklyGoal, isLoading: goalsLoading, createWeeklyGoal, updateWeeklyGoal, syncFromPlaid } = useGoalsStore();
   const { summary, isLoading: summaryLoading, fetchWeeklySummary } = useSummaryStore();
+  const { taxResult, isLoading: taxLoading, error: taxError, calculateTax } = useTaxStore();
 
-  const [activeTab, setActiveTab] = useState<"goals" | "summary">("goals");
+  const [activeTab, setActiveTab] = useState<"goals" | "summary" | "taxes">("goals");
+  const [filingStatus, setFilingStatus] = useState("Single");
+  const [incomeInput, setIncomeInput] = useState("");
   const [limits, setLimits] = useState<{ [key: string]: string }>({});
   const [spentAmounts, setSpentAmounts] = useState<{ [key: string]: string }>({});
   const [isSettingGoals, setIsSettingGoals] = useState(true);
@@ -39,7 +53,7 @@ const FinancialPlanner: React.FC = () => {
     }
   }, [activeTab]);
 
-  const handleSaveGoals = async () => {
+const handleSaveGoals = async () => {
     const goals = CATEGORIES.map((cat) => ({
       category: cat,
       limit: Number(limits[cat] || 0),
@@ -58,6 +72,14 @@ const FinancialPlanner: React.FC = () => {
     }
   };
 
+  const handleSyncFromPlaid = async () => {
+    if (!user?._id) return;
+    const success = await syncFromPlaid(user._id);
+    if (success) {
+      Alert.alert("Synced", "Spending updated from your bank transactions.");
+    }
+  };
+
   const handleUpdateSpending = async () => {
     if (!weeklyGoal?._id) return;
 
@@ -71,6 +93,11 @@ const FinancialPlanner: React.FC = () => {
       setSpentAmounts({});
       Alert.alert("Success", "Spending updated!");
     }
+  };
+
+  const handleCalculateTax = async () => {
+    if (!user?._id) return;
+    await calculateTax(user._id, filingStatus, Number(incomeInput || 0));
   };
 
   const getProgressColor = (spent: number, limit: number) => {
@@ -140,7 +167,7 @@ const FinancialPlanner: React.FC = () => {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
-      <Text style={styles.header}>Weekly Planner</Text>
+      <Text style={styles.header}>Financial Planner</Text>
 
       {/* Tab Switcher */}
       <View style={styles.tabContainer}>
@@ -158,6 +185,14 @@ const FinancialPlanner: React.FC = () => {
         >
           <Text style={[styles.tabText, activeTab === "summary" && styles.activeTabText]}>
             Summary
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === "taxes" && styles.activeTab]}
+          onPress={() => setActiveTab("taxes")}
+        >
+          <Text style={[styles.tabText, activeTab === "taxes" && styles.activeTabText]}>
+            Taxes
           </Text>
         </TouchableOpacity>
       </View>
@@ -241,6 +276,15 @@ const FinancialPlanner: React.FC = () => {
                   </Text>
                 </TouchableOpacity>
               </View>
+
+              <TouchableOpacity
+                style={[styles.button, styles.syncButton]}
+                onPress={handleSyncFromPlaid}
+              >
+                <Text style={styles.buttonText}>
+                  {goalsLoading ? "Syncing..." : "Sync from Bank"}
+                </Text>
+              </TouchableOpacity>
 
               <TouchableOpacity
                 style={[styles.button, styles.resetButton]}
@@ -331,6 +375,73 @@ const FinancialPlanner: React.FC = () => {
           )}
         </>
       )}
+      {/* TAXES TAB */}
+      {activeTab === "taxes" && (
+        <>
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Filing Status</Text>
+            <View style={styles.pickerContainer}>
+              <Picker
+                selectedValue={filingStatus}
+                onValueChange={(value) => setFilingStatus(value)}
+                style={styles.picker}
+              >
+                {FILING_STATUSES.map((status) => (
+                  <Picker.Item key={status} label={status} value={status} />
+                ))}
+              </Picker>
+            </View>
+          </View>
+
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Total Yearly Income</Text>
+            <TextInput
+              style={styles.incomeInput}
+              placeholder="Enter amount"
+              keyboardType="numeric"
+              value={incomeInput}
+              onChangeText={setIncomeInput}
+            />
+<TouchableOpacity style={styles.button} onPress={handleCalculateTax}>
+              <Text style={styles.buttonText}>
+                {taxLoading ? "Calculating..." : "Calculate Tax Estimate"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {taxError ? (
+            <View style={styles.errorCard}>
+              <Text style={styles.errorText}>{taxError}</Text>
+            </View>
+          ) : null}
+
+          {taxResult ? (
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>Tax Estimate Results</Text>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Yearly Income</Text>
+                <Text style={styles.summaryValue}>${formatCurrency(taxResult.yearlyIncome)}</Text>
+              </View>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Standard Deduction</Text>
+                <Text style={styles.summaryValue}>-${formatCurrency(taxResult.deductions)}</Text>
+              </View>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Taxable Income</Text>
+                <Text style={styles.summaryValue}>${formatCurrency(taxResult.taxableIncome)}</Text>
+              </View>
+              <View style={[styles.summaryRow, styles.totalRow]}>
+                <Text style={styles.totalLabel}>Estimated Tax</Text>
+                <Text style={[styles.totalAmount, styles.expense]}>${formatCurrency(taxResult.estimatedTax)}</Text>
+              </View>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Effective Rate</Text>
+                <Text style={styles.summaryValue}>{taxResult.effectiveRate.toFixed(1)}%</Text>
+              </View>
+            </View>
+          ) : null}
+        </>
+      )}
     </ScrollView>
   );
 };
@@ -355,6 +466,7 @@ const styles = StyleSheet.create({
   input: { borderWidth: 1, borderColor: "#2b67ff", borderRadius: 5, padding: 8, width: 80, textAlign: "center" },
   button: { backgroundColor: "#2b67ff", padding: 12, borderRadius: 8, alignItems: "center", marginTop: 10 },
   resetButton: { backgroundColor: "#666", marginBottom: 20 },
+  syncButton: { backgroundColor: "#03BF62", marginBottom: 10 },
   buttonText: { color: "#fff", fontWeight: "600", fontSize: 16 },
   goalRow: { marginVertical: 8 },
   goalHeader: { flexDirection: "row", justifyContent: "space-between", marginBottom: 4 },
@@ -439,5 +551,77 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
     color: "#333"
-  }
+  },
+  filingStatusContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 4,
+  },
+  filingStatusBtn: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "#2b67ff",
+  },
+  filingStatusBtnActive: {
+    backgroundColor: "#2b67ff",
+  },
+  filingStatusText: {
+    fontSize: 14,
+    color: "#2b67ff",
+  },
+  filingStatusTextActive: {
+    color: "#fff",
+  },
+  errorCard: {
+    padding: 15,
+    borderRadius: 8,
+    backgroundColor: "#fff0f0",
+    borderWidth: 1,
+    borderColor: "#FF3B30",
+    marginBottom: 15,
+  },
+  errorText: {
+    color: "#FF3B30",
+    fontSize: 14,
+    textAlign: "center",
+  },
+  incomeHint: {
+    fontSize: 13,
+    color: "#888",
+    marginBottom: 10,
+  },
+  incomeInput: {
+    borderWidth: 1,
+    borderColor: "#2b67ff",
+    borderRadius: 5,
+    padding: 10,
+    fontSize: 18,
+    textAlign: "center",
+    marginBottom: 10,
+  },
+  importButton: {
+    borderWidth: 1,
+    borderColor: "#2b67ff",
+    borderRadius: 8,
+    padding: 10,
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  importButtonText: {
+    color: "#2b67ff",
+    fontWeight: "600",
+    fontSize: 14,
+  },
+  pickerContainer: {
+    borderWidth: 1,
+    borderColor: "#2b67ff",
+    borderRadius: 8,
+    overflow: "hidden",
+  },
+  picker: {
+    color: "#333",
+  },
 });

@@ -7,6 +7,7 @@ import weeklyGoalRouter from "./routes/weeklyGoals.js";
 import plaidRoutes from "./routes/plaid.js";
 import stocksRouter from "./routes/stocks.js"
 import weeklySummaryRouter from "./routes/weeklySummary.js";
+import taxEstimationRouter from "./routes/taxEstimation.js";
 
 const app = express();
 
@@ -330,9 +331,10 @@ app.get("/backend-test", async (req, res) => {
 app.use("/api/plaid", plaidRoutes);
 app.use("/api/stocks", stocksRouter);
 app.use("/users", userrouter);
-app.use("/api/expenses", expensesRouter)
+//app.use("/api/expenses", expensesRouter)
 app.use("/weeklygoals", weeklyGoalRouter);
 app.use("/weeklysummary", weeklySummaryRouter);
+app.use("/taxestimation", taxEstimationRouter);
 
 // Start Server
 const port = process.env.PORT || 9000;
