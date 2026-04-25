@@ -7,6 +7,7 @@ export default function Homelayout() {
       <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Screen name="addAccountActionSheet" options={{ headerShown: false, presentation: "transparentModal" }} />
       <Stack.Screen name="addManualAccountPopup" options={{ headerShown: false, presentation: "transparentModal" }} />
+      <Stack.Screen name="MorningBriefing" options={{ headerShown: false }} />
     </Stack>
   );
 }
