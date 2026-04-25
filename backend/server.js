@@ -8,6 +8,7 @@ import plaidRoutes from "./routes/plaid.js";
 import stocksRouter from "./routes/stocks.js"
 import weeklySummaryRouter from "./routes/weeklySummary.js";
 import taxEstimationRouter from "./routes/taxEstimation.js";
+import transactionsRouter from "./routes/transactions.js";
 
 const app = express();
 
@@ -335,6 +336,7 @@ app.use("/users", userrouter);
 app.use("/weeklygoals", weeklyGoalRouter);
 app.use("/weeklysummary", weeklySummaryRouter);
 app.use("/taxestimation", taxEstimationRouter);
+app.use("/transactions", transactionsRouter);
 
 // Start Server
 const port = process.env.PORT || 9000;

@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
+  RefreshControl,
 } from "react-native";
 import Svg, { Circle, G } from "react-native-svg";
 import { Picker } from "@react-native-picker/picker";
@@ -14,6 +15,8 @@ import useGoalsStore from "@/src/stores/useGoalsStore";
 import useSummaryStore from "@/src/stores/useSummaryStore";
 import useAuthStore from "@/src/stores/useAuthStore";
 import useTaxStore from "@/src/stores/useTaxStore";
+import useTransactionStore from "@/src/stores/useTransactionStore";
+import { useHomeStore } from "@/src/stores/useHomeStore";
 
 //format numbers with commas and 2 decimal places
 const formatCurrency = (num: number): string => {
@@ -28,30 +31,118 @@ const formatCategory = (category: string): string => {
   return formatted.charAt(0).toUpperCase() + formatted.slice(1);
 };
 
+//returns ISO date strings for a named date range
+const getDateRange = (range: string): { startDate?: string; endDate?: string } => {
+  const now = new Date();
+  if (range === "this_month") {
+    const start = new Date(now.getFullYear(), now.getMonth(), 1);
+    return { startDate: start.toISOString(), endDate: now.toISOString() };
+  }
+  if (range === "last_month") {
+    const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const end = new Date(now.getFullYear(), now.getMonth(), 0);
+    return { startDate: start.toISOString(), endDate: end.toISOString() };
+  }
+  if (range === "last_3_months") {
+    const start = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
+    return { startDate: start.toISOString(), endDate: now.toISOString() };
+  }
+  return {};
+};
+
 const CATEGORY_COLORS = ["#2b67ff", "#03BF62", "#FF9500", "#FF3B30", "#8E44AD", "#16A085"];
 
 const CATEGORIES = ["Groceries", "Dining", "Entertainment", "Transport", "Shopping", "Other"];
 
 const FILING_STATUSES = ["Single", "Married Filing Jointly", "Head of Household"];
 
+const TRANSACTION_CATEGORIES = [
+  { label: "All Categories", value: "" },
+  { label: "Food & Drink", value: "FOOD_AND_DRINK" },
+  { label: "Transportation", value: "TRANSPORTATION" },
+  { label: "General Merchandise", value: "GENERAL_MERCHANDISE" },
+  { label: "Entertainment", value: "ENTERTAINMENT" },
+  { label: "Income", value: "INCOME" },
+  { label: "Transfer", value: "TRANSFER" },
+  { label: "Travel", value: "TRAVEL" },
+  { label: "Medical", value: "MEDICAL" },
+  { label: "Personal Care", value: "PERSONAL_CARE" },
+  { label: "Home Improvement", value: "HOME_IMPROVEMENT" },
+  { label: "Utilities", value: "UTILITIES" },
+];
+
+const DATE_RANGES = [
+  { label: "This Month", value: "this_month" },
+  { label: "Last Month", value: "last_month" },
+  { label: "Last 3 Months", value: "last_3_months" },
+  { label: "All Time", value: "all_time" },
+];
+
 const FinancialPlanner: React.FC = () => {
   const { user } = useAuthStore();
   const { weeklyGoal, isLoading: goalsLoading, createWeeklyGoal, updateWeeklyGoal, syncFromPlaid } = useGoalsStore();
   const { summary, isLoading: summaryLoading, fetchWeeklySummary } = useSummaryStore();
   const { taxResult, isLoading: taxLoading, error: taxError, calculateTax } = useTaxStore();
+  const { transactions, isLoading: txnLoading, searchTransactions } = useTransactionStore();
+  const { accounts, fetchAccounts } = useHomeStore();
 
-  const [activeTab, setActiveTab] = useState<"goals" | "summary" | "taxes">("goals");
+  const [activeTab, setActiveTab] = useState<"transactions" | "goals" | "summary" | "taxes">("transactions");
   const [filingStatus, setFilingStatus] = useState("Single");
   const [incomeInput, setIncomeInput] = useState("");
   const [limits, setLimits] = useState<{ [key: string]: string }>({});
   const [spentAmounts, setSpentAmounts] = useState<{ [key: string]: string }>({});
   const [isSettingGoals, setIsSettingGoals] = useState(true);
 
+  //transaction filter state
+  const [merchantSearch, setMerchantSearch] = useState("");
+  const [selectedAccount, setSelectedAccount] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [dateRange, setDateRange] = useState("this_month");
+  const [minAmount, setMinAmount] = useState("");
+  const [maxAmount, setMaxAmount] = useState("");
+  const [visibleCount, setVisibleCount] = useState(10);
+  const [showFilters, setShowFilters] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    if (!user?._id) return;
+    setIsRefreshing(true);
+    const dateFilters = getDateRange(dateRange);
+    await searchTransactions(user._id, {
+      accountId: selectedAccount || undefined,
+      category: selectedCategory || undefined,
+      merchantName: merchantSearch || undefined,
+      minAmount: minAmount || undefined,
+      maxAmount: maxAmount || undefined,
+      ...dateFilters,
+    });
+    setIsRefreshing(false);
+  };
+
   useEffect(() => {
     if (activeTab === "summary" && user?._id) {
       fetchWeeklySummary(user._id);
     }
+    if (activeTab === "transactions" && user?._id) {
+      if (accounts.length === 0) fetchAccounts();
+      setVisibleCount(10);
+      searchTransactions(user._id, getDateRange("this_month"));
+    }
   }, [activeTab]);
+
+  const handleApplyFilters = () => {
+    if (!user?._id) return;
+    setVisibleCount(10);
+    const dateFilters = getDateRange(dateRange);
+    searchTransactions(user._id, {
+      accountId: selectedAccount || undefined,
+      category: selectedCategory || undefined,
+      merchantName: merchantSearch || undefined,
+      minAmount: minAmount || undefined,
+      maxAmount: maxAmount || undefined,
+      ...dateFilters,
+    });
+  };
 
 const handleSaveGoals = async () => {
     const goals = CATEGORIES.map((cat) => ({
@@ -166,11 +257,27 @@ const handleSaveGoals = async () => {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.scrollContent}
+      refreshControl={
+        activeTab === "transactions" ? (
+          <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor="#2b67ff" />
+        ) : undefined
+      }
+    >
       <Text style={styles.header}>Financial Planner</Text>
 
       {/* Tab Switcher */}
       <View style={styles.tabContainer}>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === "transactions" && styles.activeTab]}
+          onPress={() => setActiveTab("transactions")}
+        >
+          <Text style={[styles.tabText, activeTab === "transactions" && styles.activeTabText]}>
+            Transactions
+          </Text>
+        </TouchableOpacity>
         <TouchableOpacity
           style={[styles.tab, activeTab === "goals" && styles.activeTab]}
           onPress={() => setActiveTab("goals")}
@@ -196,6 +303,167 @@ const handleSaveGoals = async () => {
           </Text>
         </TouchableOpacity>
       </View>
+
+      {/* TRANSACTIONS TAB */}
+      {activeTab === "transactions" && (
+        <>
+          {/* Search + filter toggle row */}
+          <View style={styles.searchRow}>
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search merchant or name..."
+              value={merchantSearch}
+              onChangeText={setMerchantSearch}
+              returnKeyType="search"
+              onSubmitEditing={handleApplyFilters}
+            />
+            <TouchableOpacity
+              style={styles.filterToggleBtn}
+              onPress={() => setShowFilters((v) => !v)}
+            >
+              <Text style={styles.filterToggleText}>
+                {showFilters ? "Filters ▲" : "Filters ▼"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Collapsible filters */}
+          {showFilters && (
+            <View style={styles.card}>
+              <Text style={styles.filterLabel}>Account</Text>
+              <View style={styles.pickerContainer}>
+                <Picker
+                  selectedValue={selectedAccount}
+                  onValueChange={(val) => setSelectedAccount(val)}
+                  style={styles.picker}
+                >
+                  <Picker.Item label="All Accounts" value="" />
+                  {[...new Map(accounts.map((a) => [a._id, a])).values()].map((acc) => (
+                    <Picker.Item key={acc._id} label={acc.name} value={acc._id} />
+                  ))}
+                </Picker>
+              </View>
+
+              <Text style={styles.filterLabel}>Category</Text>
+              <View style={styles.pickerContainer}>
+                <Picker
+                  selectedValue={selectedCategory}
+                  onValueChange={(val) => setSelectedCategory(val)}
+                  style={styles.picker}
+                >
+                  {TRANSACTION_CATEGORIES.map((cat) => (
+                    <Picker.Item key={cat.value} label={cat.label} value={cat.value} />
+                  ))}
+                </Picker>
+              </View>
+
+              <Text style={styles.filterLabel}>Date Range</Text>
+              <View style={styles.pickerContainer}>
+                <Picker
+                  selectedValue={dateRange}
+                  onValueChange={(val) => setDateRange(val)}
+                  style={styles.picker}
+                >
+                  {DATE_RANGES.map((dr) => (
+                    <Picker.Item key={dr.value} label={dr.label} value={dr.value} />
+                  ))}
+                </Picker>
+              </View>
+
+              <Text style={styles.filterLabel}>Amount Range</Text>
+              <View style={styles.amountRangeRow}>
+                <TextInput
+                  style={[styles.input, styles.amountInput]}
+                  placeholder="Min $"
+                  keyboardType="numeric"
+                  value={minAmount}
+                  onChangeText={setMinAmount}
+                />
+                <Text style={styles.amountRangeSep}>–</Text>
+                <TextInput
+                  style={[styles.input, styles.amountInput]}
+                  placeholder="Max $"
+                  keyboardType="numeric"
+                  value={maxAmount}
+                  onChangeText={setMaxAmount}
+                />
+              </View>
+
+              <TouchableOpacity style={[styles.button, { marginTop: 14 }]} onPress={handleApplyFilters}>
+                <Text style={styles.buttonText}>
+                  {txnLoading ? "Loading..." : "Apply Filters"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Transaction list */}
+          {txnLoading ? (
+            <Text style={styles.loadingText}>Loading transactions...</Text>
+          ) : transactions.length === 0 ? (
+            <Text style={styles.loadingText}>No transactions found</Text>
+          ) : (
+            <>
+              {transactions.slice(0, visibleCount).map((txn) => (
+                <View key={txn._id} style={styles.txnCard}>
+                  <View style={styles.txnTopRow}>
+                    <Text style={styles.txnMerchant} numberOfLines={1}>
+                      {txn.merchant_name || txn.name}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.txnAmount,
+                        txn.transaction_type === "income" ? styles.income : styles.expense,
+                      ]}
+                    >
+                      {txn.transaction_type === "income" ? "+" : "-"}$
+                      {formatCurrency(Math.abs(txn.amount))}
+                    </Text>
+                  </View>
+                  <View style={styles.txnBottomRow}>
+                    <Text style={styles.txnMeta}>
+                      {txn.personal_finance_category?.primary
+                        ? formatCategory(txn.personal_finance_category.primary)
+                        : "Uncategorized"}
+                    </Text>
+                    <Text style={styles.txnMeta}>
+                      {new Date(txn.date).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })}
+                    </Text>
+                  </View>
+                  {txn.account && (
+                    <Text style={styles.txnAccount}>{txn.account.name}</Text>
+                  )}
+                </View>
+              ))}
+              {visibleCount < transactions.length && (
+                <View style={styles.loadMoreRow}>
+                  <TouchableOpacity
+                    style={styles.loadMoreBtn}
+                    onPress={() => setVisibleCount((c) => c + 10)}
+                  >
+                    <Text style={styles.loadMoreText}>
+                      Load 10 More ({transactions.length - visibleCount} remaining)
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.showAllBtn}
+                    onPress={() => setVisibleCount(transactions.length)}
+                  >
+                    <Text style={styles.showAllText}>Show All</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+              <Text style={styles.txnCountLabel}>
+                Showing {Math.min(visibleCount, transactions.length)} of {transactions.length} transactions
+              </Text>
+            </>
+          )}
+        </>
+      )}
 
       {/* GOALS TAB */}
       {activeTab === "goals" && (
@@ -455,9 +723,9 @@ const styles = StyleSheet.create({
   },
   header: { fontSize: 24, fontWeight: "bold", color: "#000", marginBottom: 15 },
   tabContainer: { flexDirection: "row", marginBottom: 20, backgroundColor: "#e0e0e0", borderRadius: 8, padding: 4 },
-  tab: { flex: 1, paddingVertical: 10, alignItems: "center", borderRadius: 6 },
+  tab: { flex: 1, paddingVertical: 8, alignItems: "center", borderRadius: 6 },
   activeTab: { backgroundColor: "#2b67ff" },
-  tabText: { fontSize: 16, color: "#666", fontWeight: "500" },
+  tabText: { fontSize: 12, color: "#666", fontWeight: "500" },
   activeTabText: { color: "#fff" },
   card: { padding: 15, borderWidth: 1, borderColor: "#2b67ff", borderRadius: 8, marginBottom: 15, backgroundColor: "#fff" },
   cardTitle: { fontSize: 18, fontWeight: "600", color: "#2b67ff", marginBottom: 10 },
@@ -623,5 +891,129 @@ const styles = StyleSheet.create({
   },
   picker: {
     color: "#333",
+  },
+  searchRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 12,
+  },
+  searchInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: "#2b67ff",
+    borderRadius: 8,
+    padding: 10,
+    fontSize: 14,
+    color: "#333",
+    backgroundColor: "#fff",
+  },
+  filterToggleBtn: {
+    borderWidth: 1,
+    borderColor: "#2b67ff",
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    backgroundColor: "#fff",
+  },
+  filterToggleText: {
+    color: "#2b67ff",
+    fontWeight: "600",
+    fontSize: 13,
+  },
+  filterLabel: {
+    fontSize: 13,
+    color: "#666",
+    marginTop: 12,
+    marginBottom: 4,
+    fontWeight: "500",
+  },
+  amountRangeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  amountInput: {
+    flex: 1,
+    width: undefined,
+  },
+  amountRangeSep: {
+    fontSize: 16,
+    color: "#666",
+  },
+  txnCard: {
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "#e0e8ff",
+    borderRadius: 8,
+    marginBottom: 10,
+    backgroundColor: "#fff",
+  },
+  txnTopRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  txnBottomRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  txnMerchant: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#222",
+    flex: 1,
+    marginRight: 8,
+  },
+  txnAmount: {
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  txnMeta: {
+    fontSize: 13,
+    color: "#888",
+  },
+  txnAccount: {
+    fontSize: 12,
+    color: "#2b67ff",
+    marginTop: 4,
+  },
+  loadMoreRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 10,
+  },
+  loadMoreBtn: {
+    flex: 2,
+    backgroundColor: "#2b67ff",
+    padding: 12,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  loadMoreText: {
+    color: "#fff",
+    fontWeight: "600",
+    fontSize: 13,
+  },
+  showAllBtn: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: "#2b67ff",
+    padding: 12,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  showAllText: {
+    color: "#2b67ff",
+    fontWeight: "600",
+    fontSize: 13,
+  },
+  txnCountLabel: {
+    fontSize: 12,
+    color: "#999",
+    textAlign: "center",
+    marginBottom: 16,
   },
 });
