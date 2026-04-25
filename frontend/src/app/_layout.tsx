@@ -29,6 +29,7 @@ export default function Rootlayout() {
       {/* Protected Routes. When isAuth is true tabs page is Open. */}
       <Stack.Protected guard={!!isAuthenticated}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="walkthrough" options={{ headerShown: false }} />
       </Stack.Protected>
 
       {/* Protected Routes. When isAuth is false authScreen is open. */}

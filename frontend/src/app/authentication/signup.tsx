@@ -46,9 +46,7 @@ export default function SignUp() {
     const success = await attemptSignup(name, email, password, phone);
 
     if (success) {
-      Alert.alert("Success", "Account created successfully!", [
-        { text: "OK", onPress: () => router.replace("/(tabs)/(home)") }
-      ]);
+      router.replace("/walkthrough" as any);
     } else {
       Alert.alert("Signup Failed", error || "Could not create account");
     }
