@@ -1,5 +1,6 @@
 import express from "express";
 import plaidAct from "./../controllers/plaid.js";
+import controllers from "../controllers/plaid.js";
 
 const router = express.Router();
 
@@ -23,5 +24,9 @@ router.post("/banks/:userId/manual", plaidAct.createManualBank);
 
 // Bank management
 router.delete("/banks/:bankId", plaidAct.removeBank);
+
+// Credit Insights
+router.get("/credit/:userId", controllers.getCreditInsights);
+router.get("/liabilities/:userId", controllers.getLiabilities);
 
 export default router;

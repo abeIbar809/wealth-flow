@@ -8,6 +8,7 @@ import plaidRoutes from "./routes/plaid.js";
 import stocksRouter from "./routes/stocks.js"
 import weeklySummaryRouter from "./routes/weeklySummary.js";
 import expensesRouter from "./routes/expenses.js";
+import realEstateRouter from "./routes/realEstate.js";
 
 const app = express();
 
@@ -330,6 +331,7 @@ app.get("/backend-test", async (req, res) => {
 
 app.use("/api/plaid", plaidRoutes);
 app.use("/api/stocks", stocksRouter);
+app.use("/api/real-estate", realEstateRouter);
 app.use("/users", userrouter);
 app.use("/api/expenses", expensesRouter)
 app.use("/weeklygoals", weeklyGoalRouter);

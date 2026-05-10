@@ -10,9 +10,9 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React, { useEffect, useCallback } from "react";
-import { RefreshControl, ScrollView, View } from "react-native";
+import { RefreshControl, ScrollView, TouchableOpacity, View } from "react-native";
 import ExpensePieChart from "@/src/components/ExpensePieChart";
-import * as Haptics from "expo-haptics";
+import { AppText } from "@/src/components/common/app-text";
 export default function HomeIndex() {
 
   const {
@@ -31,8 +31,6 @@ export default function HomeIndex() {
   }, [])
 
   const handleRefresh = useCallback(async () => {
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-
     try {
       // Sync data from Plaid and refresh
       await refreshAllData();
@@ -40,6 +38,10 @@ export default function HomeIndex() {
       console.error("Error refreshing data:", error);
     }
   }, [refreshAllData]);
+
+  const handleCreditScorePress = async () => {
+    router.push("/creditScoreSheet");
+  };
 
   return (
     <>
@@ -51,7 +53,7 @@ export default function HomeIndex() {
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
-            onRefresh={handleRefresh}
+            onRefresh={() =>  {}}
             tintColor="#0000ff"
             colors={["#0000ff"]}
           />
@@ -72,6 +74,24 @@ export default function HomeIndex() {
             percentChange={63}
             onLongPress={() => { }}
           />
+
+          {/* Credit Score Card */}
+
+          <TouchableOpacity className="w-5/6 h-30 my-3 bg-[#1F2937] rounded-lg p-3" onPress={handleCreditScorePress} >
+              <View className=" w-12 h-12 bg-white/20 rounded-xl items-center justify-center ">
+                <Ionicons name="shield-checkmark" size={24} color="#FFF" />
+              </View>
+              <View className="w-full h-16">
+                <AppText className="text-white font-semibold text-[16px]">Credit Health</AppText>
+                <AppText className="text-white/70 text-[13px]">
+                  Check your credit score & insights
+                </AppText>
+              </View>
+              <View className="w-8 h-8 bg-white/20 rounded-full items-center justify-center">
+                <Ionicons name="chevron-forward" size={18} color="#FFF" />
+              </View>
+          </TouchableOpacity>
+
           <NetWorthBarChartComponent
             data={MockNetWorthGrowthData.multi_month}
             data2={MockNetWorthGrowthData.multi_year}
@@ -79,6 +99,7 @@ export default function HomeIndex() {
           >
           </NetWorthBarChartComponent>
         </GroupedPageSection>
+
         <GroupedPageSection>
           <HeadingWithElement heading={"Accounts"}>
             <HapticButton onPressed={() => { router.push("/addAccountActionSheet") }}>

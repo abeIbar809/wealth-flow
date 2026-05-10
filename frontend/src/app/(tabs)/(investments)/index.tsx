@@ -20,8 +20,11 @@ import { fetchAccounts } from "./services/plaidService";
 import { calculateAssets } from "./utils/assetUtils";
 import AssetPieChart from "./components/AssetPieChart";
 import useAuthStore from "@/src/stores/useAuthStore";
+import { AddPropertyModal, PropertyItem, PropertyTypeChart, RealEstatePortfolioCard } from "@/src/components/RealEstate";
+import { useRealEstateStore } from "@/src/stores/useRealEstateStore";
+import realEstateService, { AddPropertyData, Property } from "@/src/services/realEstateService";
 
-type TabType = "overview" | "stocks";
+type TabType = "overview" | "stocks" | "estate";
 
 export default function InvestmentsPage() {
 
@@ -29,6 +32,11 @@ export default function InvestmentsPage() {
   const screenWidth = Dimensions.get("window").width;
   const cardContentWidth = screenWidth - 72;
   const pieChartSize = Math.min(cardContentWidth - 12, 260);
+
+  // Real estate state
+  const [isPropertyModalVisible, setIsPropertyModalVisible] = useState(false);
+  const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
+  const hasFetchedProperties = useRef(false);
 
 
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -119,6 +127,56 @@ export default function InvestmentsPage() {
   const clearSearchResults = useStocksStore((state) => state.clearSearchResults);
   const fetchPriceHistory = useStocksStore((state) => state.fetchPriceHistory);
 
+   // Real estate store
+  const properties = useRealEstateStore((state) => state.properties);
+  const realEstateSummary = useRealEstateStore((state) => state.portfolioSummary);
+  const isLoadingProperties = useRealEstateStore((state) => state.isLoading);
+  const isRefreshingProperties = useRealEstateStore((state) => state.isRefreshing);
+  const fetchProperties = useRealEstateStore((state) => state.fetchProperties);
+  const addProperty = useRealEstateStore((state) => state.addProperty);
+  const deleteProperty = useRealEstateStore((state) => state.deleteProperty);
+  const refreshAllRealEstateData = useRealEstateStore((state) => state.refreshAllData);
+
+   // --- Real Estate Handlers ---
+  const handleAddProperty = useCallback(async (data: AddPropertyData) => {
+    await addProperty(data);
+  }, [addProperty]);
+
+  const handlePropertyPress = useCallback((property: Property) => {
+    setSelectedProperty((current) =>
+      current?._id === property._id ? null : property
+    );
+  }, []);
+
+  const handlePropertyLongPress = useCallback((property: Property) => {
+    Alert.alert(
+      property.name,
+      realEstateService.formatAddress(property.address),
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+            try {
+              await deleteProperty(property._id);
+              if (selectedProperty?._id === property._id) {
+                setSelectedProperty(null);
+              }
+            } catch (error) {
+              Alert.alert("Error", "Failed to delete property");
+            }
+          },
+        },
+      ]
+    );
+  }, [deleteProperty, selectedProperty]);
+
+  const handleClosePropertyModal = useCallback(() => {
+    setIsPropertyModalVisible(false);
+  }, []);
+
 
   // Memoize to prevent re-renders
   const allocation = useMemo(() => {
@@ -204,6 +262,11 @@ export default function InvestmentsPage() {
     return priceHistory[`${selectedStock.symbol}_1M`] || [];
   }, [selectedStock?.symbol, priceHistory]);
 
+  // Memoize property allocation to prevent infinite loop
+  const propertyAllocation = useMemo(() => {
+    return realEstateService.calculateAllocationByType(properties);
+  }, [properties]);
+
   return (
 
     <ScrollView style={styles.container}>
@@ -247,6 +310,24 @@ export default function InvestmentsPage() {
                 Stocks
               </AppText>
             </Pressable>
+            <Pressable
+              onPress={() => handleTabChange("estate")}
+              style={{
+                flex: 1,
+                paddingVertical: 8,
+                borderRadius: 8,
+                alignItems: "center",
+                backgroundColor: activeTab === "estate" ? "#fff" : "transparent",
+              }}
+            >
+              <AppText
+                className={`text-[14px] font-medium ${
+                  activeTab === "estate" ? "text-gray-800" : "text-gray-500"
+                }`}
+              >
+                Estate
+              </AppText>
+            </Pressable>
           </View>
         </View>
 
@@ -266,8 +347,24 @@ export default function InvestmentsPage() {
        </View>
       )}
 
-      {/* Overview Tab Content */}
-      <View style={{ display: activeTab === "overview" ? "flex" : "none" }}>
+      {/* Estate Tracker  Header */}
+      {activeTab === "estate" && (
+      <View className="flex-row items-center justify-between px-8">
+        <View>
+          <AppText className="text-gray-800 font-bold text-[28px]">Estate</AppText>
+          <AppText className="text-gray-500 text-[14px]">Track your Estate portfolio</AppText>
+        </View>
+        
+          <HapticButton onPressed={() => {setIsPropertyModalVisible(true)}}>
+            <View className="w-10 h-10 bg-[#03BF62] rounded-full items-center justify-center shadow-sm">
+              <Ionicons name="add" size={24} color="#FFF" />
+            </View>
+          </HapticButton>
+       </View>
+      )}
+
+    {/* Overview Tab Content */}
+    <View style={{ display: activeTab === "overview" ? "flex" : "none" }}>
 
     <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 65 }}>
       <View style={{ padding: 20 }}>
@@ -564,6 +661,119 @@ export default function InvestmentsPage() {
       <View className="h-32" />
 
 
+      {/*Estate tracking Page*/}
+      <View style={{ display: activeTab === "estate" ? "flex" : "none" }} 
+      >
+        <View style={{ padding: 10, width: "100%" }}>
+        
+          
+            {/* Real Estate Portfolio Summary */}
+            <RealEstatePortfolioCard summary={realEstateSummary} isLoading={isLoadingProperties} />
+
+            {/* Property Type Chart */}
+            <View style={{ marginTop: 24 }}>
+              <PropertyTypeChart allocation={propertyAllocation} isLoading={isLoadingProperties} />
+            </View>
+
+            {/* Properties List */}
+            <View style={{ marginTop: 24, width: "100%" }}>
+              <HeadingWithElement heading="Properties" classNameHeader="pl-6 pr-6 mt-4 mb-2">
+                <View style={{ flexDirection: "row", alignItems: "center" }}>
+                  <AppText style={{ color: "#6B7280", fontSize: 14, marginRight: 4 }}>
+                    {properties.length} {properties.length === 1 ? "property" : "properties"}
+                  </AppText>
+                </View>
+              </HeadingWithElement>
+
+              <View style={realEstateStyles.listContainer}>
+                {isLoadingProperties && properties.length === 0 ? (
+                  <View style={realEstateStyles.loadingContainer}>
+                    <View style={realEstateStyles.loadingCircle} />
+                    <View style={realEstateStyles.loadingLine} />
+                  </View>
+                ) : properties.length > 0 ? (
+                  properties.map((property, index) => (
+                    <View key={property._id}>
+                      <View
+                        style={{
+                          backgroundColor:
+                            selectedProperty?._id === property._id
+                              ? "rgba(3, 191, 98, 0.05)"
+                              : "transparent",
+                        }}
+                      >
+                        <PropertyItem
+                          property={property}
+                          index={index}
+                          onPress={handlePropertyPress}
+                          onLongPress={handlePropertyLongPress}
+                        />
+                      </View>
+                      {index < properties.length - 1 && (
+                        <View style={realEstateStyles.divider} />
+                      )}
+
+                    </View>
+                    
+                  ))
+                ) : (
+                  <View style={realEstateStyles.emptyContainer}>
+                    <View style={realEstateStyles.emptyIconContainer}>
+                      <Ionicons name="home-outline" size={28} color="#9CA3AF" />
+                    </View>
+                    <AppText style={realEstateStyles.emptyTitle}>
+                      No properties yet
+                    </AppText>
+                    <AppText style={realEstateStyles.emptySubtitle}>
+                      Tap + to add your first property
+                    </AppText>
+                  </View>
+                )}
+                
+              </View>
+
+            
+            </View>
+
+
+            {/* Real Estate Tips */}
+            {properties.length > 0 && (
+              <View style={{ marginTop: 24 }} >
+                <View style={realEstateStyles.tipContainer}>
+                  <View style={realEstateStyles.tipRow}>
+                    <View style={realEstateStyles.tipIconContainer}>
+                      <Ionicons name="information-circle" size={22} color="#10B981" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <AppText style={realEstateStyles.tipTitle}>
+                        Track your real estate portfolio
+                      </AppText>
+                      <AppText style={realEstateStyles.tipSubtitle}>
+                        Add properties, track equity, and monitor cash flow from rentals.
+                      </AppText>
+                    </View>
+                  </View>
+                </View>
+              </View>
+              
+            )}
+             {/* Real Estate Tips */}
+              <View style={{ marginTop: 160 }}>
+               
+              </View>
+              
+            </View>
+          
+      </View>
+
+      {/* Add Property Modal */}
+      <AddPropertyModal
+        visible={isPropertyModalVisible}
+        onClose={handleClosePropertyModal}
+        onAdd={handleAddProperty}
+      />
+
+
       {/* Add Stock Modal */}
       <AddStockModal
         visible={isModalVisible}
@@ -574,6 +784,8 @@ export default function InvestmentsPage() {
         onSearch={searchStocks}
         onClearSearch={clearSearchResults}
       />
+
+      
     </ScrollView>
   );
 }
@@ -612,5 +824,90 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#fff",
     marginBottom: 12,
+  },
+});
+
+const realEstateStyles = StyleSheet.create({
+  listContainer: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 24,
+    overflow: "hidden",
+    width: "100%",
+  },
+  loadingContainer: {
+    paddingVertical: 32,
+    alignItems: "center",
+  },
+  loadingCircle: {
+    width: 48,
+    height: 48,
+    backgroundColor: "#F3F4F6",
+    borderRadius: 24,
+    marginBottom: 12,
+  },
+  loadingLine: {
+    width: 128,
+    height: 16,
+    backgroundColor: "#F3F4F6",
+    borderRadius: 4,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: "#F3F4F6",
+    marginHorizontal: 16,
+  },
+  emptyContainer: {
+    paddingVertical: 32,
+    alignItems: "center",
+    width: "100%",
+  },
+  emptyIconContainer: {
+    width: 64,
+    height: 64,
+    backgroundColor: "#F3F4F6",
+    borderRadius: 32,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 12,
+  },
+  emptyTitle: {
+    color: "#4B5563",
+    fontWeight: "500",
+    fontSize: 15,
+  },
+  emptySubtitle: {
+    color: "#9CA3AF",
+    fontSize: 13,
+    marginTop: 4,
+  },
+  tipContainer: {
+    backgroundColor: "#ECFDF5",
+    borderRadius: 24,
+
+    padding: 16,
+    width: "100%",
+  },
+  tipRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+  },
+  tipIconContainer: {
+    width: 40,
+    height: 40,
+    backgroundColor: "#D1FAE5",
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+  tipTitle: {
+    color: "#065F46",
+    fontWeight: "600",
+    fontSize: 14,
+  },
+  tipSubtitle: {
+    color: "#047857",
+    fontSize: 13,
+    marginTop: 4,
   },
 });

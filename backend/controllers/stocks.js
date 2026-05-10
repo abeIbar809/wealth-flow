@@ -471,3 +471,5 @@ export default {
   getPriceHistory,
   getCompanyOverview,
 };
+
+

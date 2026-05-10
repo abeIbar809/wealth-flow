@@ -585,6 +585,204 @@ const removeBank = async (req, res) => {
   }
 };
 
+// Get liabilities from Plaid 
+const getLiabilities = async (req, res) => {
+  const { userId } = req.params;
+
+  if (!userId) {
+    return res.status(400).json({ message: "User ID is required" });
+  }
+
+  try {
+    const banks = await Bank.find({ owner: userId, status: "active" });
+
+    if (banks.length === 0) {
+      return res.status(200).json({
+        message: "No linked banks found",
+        liabilities: { credit: [], student: [], mortgage: [] },
+      });
+    }
+    // All array types
+    const allLiabilities = {
+      credit: [],
+      student: [],
+      mortgage: [],
+    };
+
+    for (const bank of banks) {
+      try {
+        const response = await PlaidClient.liabilitiesGet({
+          access_token: bank.plaid_access_token,
+        });
+
+        const { liabilities } = response.data;
+
+        // card liabilites
+        if (liabilities.credit) {
+          allLiabilities.credit.push(...liabilities.credit.map(card => ({
+            ...card,
+            institution: bank.institution_name,
+          })));
+        }
+
+        // loan liabilites
+        if (liabilities.student) {
+          allLiabilities.student.push(...liabilities.student.map(loan => ({
+            ...loan,
+            institution: bank.institution_name,
+          })));
+        }
+
+        // Mortage liabilites
+        if (liabilities.mortgage) {
+          allLiabilities.mortgage.push(...liabilities.mortgage.map(mortgage => ({
+            ...mortgage,
+            institution: bank.institution_name,
+          })));
+        }
+      } catch (bankError) {
+        // Liabilities may not be available for all banks
+        console.log(`Liabilities not available for bank ${bank._id}:`, bankError.response?.data?.error_code);
+      }
+    }
+
+    return res.status(200).json({ liabilities: allLiabilities });
+  } catch (error) {
+    console.error("Error fetching liabilities:", error);
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+// Get credit insights 
+const getCreditInsights = async (req, res) => {
+  const { userId } = req.params;
+
+  if (!userId) {
+    return res.status(400).json({ message: "User ID is required" });
+  }
+
+  try {
+    // Get all credit accounts
+    const creditAccounts = await Account.find({
+      owner: userId,
+      type: "credit",
+    });
+
+    // Get all loan accounts
+    const loanAccounts = await Account.find({
+      owner: userId,
+      type: "loan",
+    });
+
+    // Calculate credit utilization
+    let totalCreditLimit = 0;
+    let totalCreditUsed = 0;
+    const creditCards = [];
+
+    for (const account of creditAccounts) {
+      const limit = account.balance_limit || 0;
+      const balance = account.balance_current || 0;
+      const utilization = limit > 0 ? (balance / limit) * 100 : 0;
+
+      totalCreditLimit += limit;
+      totalCreditUsed += balance;
+
+      creditCards.push({
+        id: account._id,
+        name: account.name,
+        institution: account.institution_name,
+        balance: balance,
+        limit: limit,
+        utilization: Math.round(utilization * 10) / 10,
+        available: limit - balance,
+        lastUpdated: account.lastUpdated,
+      });
+    }
+
+    const overallUtilization = totalCreditLimit > 0
+      ? Math.round((totalCreditUsed / totalCreditLimit) * 1000) / 10
+      : 0;
+
+    // Calculate credit score estimate based on utilization
+    // A simplified estimate - not actually credit score
+    let creditHealthScore = 100;
+    if (overallUtilization > 90) creditHealthScore = 30;
+    else if (overallUtilization > 75) creditHealthScore = 50;
+    else if (overallUtilization > 50) creditHealthScore = 65;
+    else if (overallUtilization > 30) creditHealthScore = 80;
+    else if (overallUtilization > 10) creditHealthScore = 90;
+
+    // Get credit health status
+    let creditHealthStatus = "Excellent";
+    let creditHealthColor = "#03BF62";
+    if (creditHealthScore < 50) {
+      creditHealthStatus = "Poor";
+      creditHealthColor = "#EF4444";
+    } else if (creditHealthScore < 70) {
+      creditHealthStatus = "Fair";
+      creditHealthColor = "#F59E0B";
+    } else if (creditHealthScore < 85) {
+      creditHealthStatus = "Good";
+      creditHealthColor = "#3B82F6";
+    }
+
+    // Calculate total debt
+    const totalDebt = totalCreditUsed + loanAccounts.reduce((sum, acc) => sum + (acc.balance_current || 0), 0);
+
+    // Get recent credit transactions (payments and charges)
+    const recentTransactions = await Transaction.find({
+      owner: userId,
+      account: { $in: creditAccounts.map(a => a._id) },
+    })
+      .sort({ date: -1 })
+      .limit(10)
+      .populate("account", "name");
+
+    // Calculate monthly payment estimate 
+    const estimatedMonthlyPayment = Math.round(totalCreditUsed * 0.02);
+
+    return res.status(200).json({
+      creditHealth: {
+        score: creditHealthScore,
+        status: creditHealthStatus,
+        color: creditHealthColor,
+      },
+      utilization: {
+        overall: overallUtilization,
+        totalLimit: totalCreditLimit,
+        totalUsed: totalCreditUsed,
+        totalAvailable: totalCreditLimit - totalCreditUsed,
+      },
+      creditCards,
+      loans: loanAccounts.map(loan => ({
+        id: loan._id,
+        name: loan.name,
+        institution: loan.institution_name,
+        balance: loan.balance_current || 0,
+        type: loan.subtype || "loan",
+      })),
+      summary: {
+        totalDebt,
+        numberOfCreditCards: creditCards.length,
+        numberOfLoans: loanAccounts.length,
+        estimatedMonthlyPayment,
+      },
+      recentTransactions: recentTransactions.map(txn => ({
+        id: txn._id,
+        name: txn.name,
+        amount: txn.amount,
+        date: txn.date,
+        type: txn.amount < 0 ? "payment" : "charge",
+        accountName: txn.account?.name,
+      })),
+    });
+  } catch (error) {
+    console.error("Error fetching credit insights:", error);
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+
 export default {
   getLinkToken,
   getAccounts,
@@ -596,4 +794,6 @@ export default {
   createManualBank,
   createManualTransaction,
   removeBank,
+  getCreditInsights,
+  getLiabilities,
 };
