@@ -32,7 +32,7 @@ export default function HomeIndex() {
     fetchAccounts();
   }, []);
 
-  // Shows the morning briefing once per day
+  // Shows the morning briefing once per day using AsyncStorage to track the last shown date
   useEffect(() => {
     const checkBriefing = async () => {
       const today     = new Date().toDateString();
@@ -45,6 +45,7 @@ export default function HomeIndex() {
     checkBriefing();
   }, []);
 
+  // Fires a light haptic tap then pulls fresh data from the server
   const handleRefresh = useCallback(async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     try {
@@ -61,6 +62,7 @@ export default function HomeIndex() {
         nestedScrollEnabled={true}
         style={{ flex: 1 }}
         className="bg-white"
+        // Pull-to-refresh wired up to the haptic handler above
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
@@ -74,17 +76,20 @@ export default function HomeIndex() {
           <HeadingWithElement heading={"Dashboard"}>
             <View className="flex-row gap-3 items-center">
 
-              {/* Sun button opens the morning briefing anytime */}
+              {/* Sun button opens the morning briefing anytime, not just on first load */}
               <HapticButton onPressed={() => router.push("/(tabs)/(home)/MorningBriefing" as any)}>
                 <Ionicons name="sunny-outline" size={30} color={"#2D2F43"} />
               </HapticButton>
 
+              {/* Settings button placeholder, handler to be wired up later */}
               <HapticButton onPressed={() => { }}>
                 <Ionicons name="cog-outline" size={30} color={"#2D2F43"} />
               </HapticButton>
 
             </View>
           </HeadingWithElement>
+
+          {/* Main net worth display with assets, liabilities and percent change */}
           <NetWorthCardComponent
             isLoading={isNetworthLoading}
             balance={netWorthData?.networth}
@@ -94,6 +99,8 @@ export default function HomeIndex() {
             percentChange={63}
             onLongPress={() => { }}
           />
+
+          {/* Bar chart toggling between monthly and yearly net worth history */}
           <NetWorthBarChartComponent
             data={MockNetWorthGrowthData.multi_month}
             data2={MockNetWorthGrowthData.multi_year}
@@ -103,10 +110,13 @@ export default function HomeIndex() {
 
         <GroupedPageSection>
           <HeadingWithElement heading={"Accounts"}>
+            {/* Plus button navigates to the add account flow */}
             <HapticButton onPressed={() => { router.push("/addAccountActionSheet"); }}>
               <Ionicons name="add-circle-outline" size={30} color={"#2D2F43"} />
             </HapticButton>
           </HeadingWithElement>
+
+          {/* Horizontally scrollable account cards, tapping one opens manual transaction entry */}
           <AccountCarouselComponent
             data={accounts}
             isLoading={false}
@@ -119,6 +129,7 @@ export default function HomeIndex() {
           />
         </GroupedPageSection>
 
+        {/* Spacer keeps the pie chart from sitting flush against the accounts section */}
         <View className="h-[100] w-full" />
         <View style={{ marginTop: 24, paddingHorizontal: 16, paddingBottom: 24 }}>
           <ExpensePieChart />

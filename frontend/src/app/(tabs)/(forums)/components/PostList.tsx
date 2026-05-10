@@ -5,6 +5,7 @@ import { AppText } from "@/src/components/common/app-text";
 
 type Category = "financial" | "app" | "social" | "other";
 
+// Human-readable labels with emojis for each category badge
 const CATEGORY_LABELS: Record<Category, string> = {
   financial: "💰 Financial",
   app:       "📱 App",
@@ -12,6 +13,7 @@ const CATEGORY_LABELS: Record<Category, string> = {
   other:     "💬 Other",
 };
 
+// Tailwind classes for the colored category pill on each post card
 const CATEGORY_COLORS: Record<Category, string> = {
   financial: "bg-green-100 text-green-800",
   app:       "bg-blue-100 text-blue-800",
@@ -26,13 +28,17 @@ export default function PostList({
   posts: any[];
   onPostDeleted: () => void;
 }) {
+  // Keyed by post ID so each post tracks its own reply input independently
   const [replyContent, setReplyContent]         = useState<{ [key: string]: string }>({});
   const [showReplyForm, setShowReplyForm]       = useState<{ [key: string]: boolean }>({});
+
+  // Flag modal state — stores which post is being flagged and the reason text
   const [flagModalVisible, setFlagModalVisible] = useState(false);
   const [flagTargetId, setFlagTargetId]         = useState<string | null>(null);
   const [flagReason, setFlagReason]             = useState("");
   const [flagSubmitting, setFlagSubmitting]     = useState(false);
 
+  // Shows a confirm dialog before permanently deleting a post
   const handleDelete = async (id: string) => {
     Alert.alert("Delete Post", "Are you sure you want to delete this post?", [
       { text: "Cancel" },
@@ -50,12 +56,14 @@ export default function PostList({
     ]);
   };
 
+  // Stores the target post ID and resets the reason field before showing the modal
   const openFlagModal = (postId: string) => {
     setFlagTargetId(postId);
     setFlagReason("");
     setFlagModalVisible(true);
   };
 
+  // Submits the flag reason and tells the parent to refresh the list
   const handleFlagSubmit = async () => {
     if (!flagTargetId) return;
     if (!flagReason.trim()) {
@@ -76,6 +84,7 @@ export default function PostList({
     }
   };
 
+  // Posts the reply text and hides the reply form on success
   const handleReplySubmit = async (postId: string) => {
     const content = replyContent[postId];
     if (!content?.trim()) {
@@ -92,6 +101,7 @@ export default function PostList({
     }
   };
 
+  // Confirms before removing a reply since the action can't be undone
   const handleDeleteReply = async (postId: string, replyId: string) => {
     Alert.alert("Delete Reply", "Are you sure?", [
       { text: "Cancel" },
@@ -109,10 +119,12 @@ export default function PostList({
     ]);
   };
 
+  // Flips the reply form open or closed for the given post
   const toggleReplyForm = (postId: string) => {
     setShowReplyForm({ ...showReplyForm, [postId]: !showReplyForm[postId] });
   };
 
+  // Empty state shown when no posts match the active filter
   if (!posts || posts.length === 0) {
     return (
       <View className="items-center p-10">
@@ -128,14 +140,15 @@ export default function PostList({
         <AppText type="subtitle" className="mb-4">Community Posts ({posts.length})</AppText>
 
         {posts.map((post) => {
-          const isFlagged = post.flagged === true;
-          const cat = (post.category as Category) ?? "other";
+          const isFlagged     = post.flagged === true;
+          const cat           = (post.category as Category) ?? "other";
+          // Splits the Tailwind string so background and text classes can go on different elements
           const categoryStyle = CATEGORY_COLORS[cat] ?? CATEGORY_COLORS.other;
 
           return (
             <View key={post._id} className="bg-white rounded-2xl p-4 mb-4 border border-gray-200">
 
-              {/* Username + Category */}
+              {/* Username on the left, category badge on the right */}
               <View className="flex-row justify-between items-center mb-2">
                 <AppText type="normal" className="text-gray-500">👤 {post.username || "Anonymous"}</AppText>
                 <View className={`px-3 py-1 rounded-full ${categoryStyle.split(" ")[0]}`}>
@@ -145,7 +158,7 @@ export default function PostList({
                 </View>
               </View>
 
-              {/* Title */}
+              {/* Flagged posts replace the title with a violation notice */}
               <AppText
                 type="defaultSemiBold"
                 className={isFlagged ? "text-red-500 italic mb-2" : "text-[#03BF62] mb-2"}
@@ -155,7 +168,7 @@ export default function PostList({
                   : post.title}
               </AppText>
 
-              {/* Content or Redacted */}
+              {/* Flagged posts redact their content and show the flag reason */}
               {isFlagged ? (
                 <View className="bg-red-50 border-l-4 border-red-400 rounded-lg p-3 mb-2">
                   <AppText type="defaultSemiBold" className="text-red-700">[REDACTED / FLAGGED]</AppText>
@@ -173,7 +186,7 @@ export default function PostList({
                 Posted on {new Date(post.createdAt).toLocaleString()}
               </AppText>
 
-              {/* Action Buttons */}
+              {/* Action row — flag button is hidden if the post is already flagged */}
               <View className="flex-row gap-2 flex-wrap">
                 <TouchableOpacity
                   onPress={() => toggleReplyForm(post._id)}
@@ -184,6 +197,7 @@ export default function PostList({
                   </AppText>
                 </TouchableOpacity>
 
+                {/* Only unflagged posts can be flagged again */}
                 {!isFlagged && (
                   <TouchableOpacity
                     onPress={() => openFlagModal(post._id)}
@@ -201,7 +215,7 @@ export default function PostList({
                 </TouchableOpacity>
               </View>
 
-              {/* Reply Form */}
+              {/* Inline reply form slides in below the action buttons when open */}
               {showReplyForm[post._id] && (
                 <View className="mt-3 bg-[#F4F6FA] rounded-xl p-3">
                   <TextInput
@@ -229,7 +243,7 @@ export default function PostList({
                 </View>
               )}
 
-              {/* Replies */}
+              {/* Green left-border cards for each reply nested under the post */}
               {post.replies && post.replies.length > 0 && (
                 <View className="mt-3 ml-2">
                   {post.replies.map((reply: any) => (
@@ -256,7 +270,7 @@ export default function PostList({
         })}
       </ScrollView>
 
-      {/* Flag Modal */}
+      {/* Flag modal — fades in over a dark overlay when a post is being reported */}
       <Modal
         visible={flagModalVisible}
         transparent
@@ -277,6 +291,7 @@ export default function PostList({
               className="bg-[#F4F6FA] rounded-xl px-3 py-3 mb-4 min-h-[80px]"
               textAlignVertical="top"
             />
+            {/* Cancel dismisses without flagging, submit sends the report */}
             <View className="flex-row justify-end gap-3">
               <TouchableOpacity
                 onPress={() => setFlagModalVisible(false)}
