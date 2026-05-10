@@ -9,6 +9,8 @@ import stocksRouter from "./routes/stocks.js";
 import weeklySummaryRouter from "./routes/weeklySummary.js";
 import expensesRouter from "./routes/expenses.js";
 import realEstateRouter from "./routes/realEstate.js";
+import insightRoutes from "./routes/insight.js";
+
 
 const app = express();
 
@@ -334,6 +336,8 @@ app.use("/api/stocks", stocksRouter);
 app.use("/api/real-estate", realEstateRouter);
 app.use("/users", userrouter);
 app.use("/api/expenses", expensesRouter)
+console.log("Registering /api/insights route");
+app.use("/api/insights", insightRoutes);
 app.use("/weeklygoals", weeklyGoalRouter);
 app.use("/weeklysummary", weeklySummaryRouter);
 
