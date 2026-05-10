@@ -28,6 +28,7 @@ function getPaymentsPerYear(freq: PaymentFrequency): number {
   return 12;
 }
 
+// Figures out how many years and months until the debt is gone
 function calcPayoffInfo(debt: Debt): { years: number; remainingMonths: number } | null {
   const { remainingAmount, paymentAmount, interestRate, paymentFrequency } = debt;
   if (remainingAmount <= 0) return null;
@@ -50,6 +51,7 @@ function calcPayoffInfo(debt: Debt): { years: number; remainingMonths: number } 
 }
 
 export default function DebtCard({ debt, onEdit, onDelete, onExtraPayment }: Props) {
+  // Controls whether the full details are showing
   const [expanded, setExpanded]             = useState(false);
   const [extraAmount, setExtraAmount]       = useState("");
   const [showExtraModal, setShowExtraModal] = useState(false);
@@ -58,6 +60,7 @@ export default function DebtCard({ debt, onEdit, onDelete, onExtraPayment }: Pro
   const paidAmount = debt.totalAmount - debt.remainingAmount;
   const payoffInfo = calcPayoffInfo(debt);
 
+  // Green is paid, light green is still owed
   const pieData = [
     { value: Math.max(paidAmount, 0),           color: "#03BF62" },
     { value: Math.max(debt.remainingAmount, 0), color: "#E8F5E9" },
@@ -85,7 +88,7 @@ export default function DebtCard({ debt, onEdit, onDelete, onExtraPayment }: Pro
       activeOpacity={0.9}
       className="bg-white rounded-2xl p-4 mb-4 border border-gray-200"
     >
-      {/* ── Paid off state ── */}
+      {/* Replaces all content with a celebration when fully paid */}
       {isPaidOff ? (
         <View className="items-center py-3">
           <AppText type="subtitle" className="text-[#03BF62]">🎉 Congratulations!</AppText>
@@ -93,7 +96,7 @@ export default function DebtCard({ debt, onEdit, onDelete, onExtraPayment }: Pro
           <AppText type="normal" className="text-gray-400 mt-1">This debt is fully paid off!</AppText>
         </View>
       ) : (
-        /* ── Collapsed view ── */
+        /* Summary row showing name, remaining balance, payoff estimate and pie chart */
         <View className="flex-row justify-between items-center">
           <View className="flex-1">
             <AppText type="defaultSemiBold" className="text-gray-800">{debt.name}</AppText>
@@ -135,11 +138,10 @@ export default function DebtCard({ debt, onEdit, onDelete, onExtraPayment }: Pro
         </View>
       )}
 
-      {/* ── Expanded view ── */}
+      {/* Full breakdown only visible when the card is tapped open */}
       {expanded && !isPaidOff && (
         <View className="mt-4 border-t border-gray-100 pt-4">
 
-          {/* Details */}
           <View className="bg-[#F4F6FA] rounded-xl p-3 mb-3">
             <View className="flex-row justify-between mb-1">
               <AppText type="normal" className="text-gray-500">Original Debt</AppText>
@@ -171,7 +173,7 @@ export default function DebtCard({ debt, onEdit, onDelete, onExtraPayment }: Pro
             )}
           </View>
 
-          {/* Payoff estimate */}
+          {/* Green banner showing the estimated finish date */}
           {payoffInfo && (
             <View className="bg-green-50 rounded-xl p-3 mb-3 border border-green-100">
               <AppText type="normal" className="text-green-700">
@@ -184,7 +186,7 @@ export default function DebtCard({ debt, onEdit, onDelete, onExtraPayment }: Pro
             </View>
           )}
 
-          {/* Action buttons */}
+          {/* Edit, delete and extra payment actions */}
           <View className="flex-row gap-2">
             <TouchableOpacity
               onPress={() => setShowExtraModal(true)}
@@ -208,7 +210,7 @@ export default function DebtCard({ debt, onEdit, onDelete, onExtraPayment }: Pro
         </View>
       )}
 
-      {/* ── Extra Payment Modal ── */}
+      {/* Popup for logging a one-off payment outside the schedule */}
       <Modal
         visible={showExtraModal}
         transparent

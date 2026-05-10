@@ -5,10 +5,13 @@ import cors from "cors";
 import userrouter from "./routes/users.js";
 import weeklyGoalRouter from "./routes/weeklyGoals.js";
 import plaidRoutes from "./routes/plaid.js";
-import stocksRouter from "./routes/stocks.js"
+import stocksRouter from "./routes/stocks.js";
 import weeklySummaryRouter from "./routes/weeklySummary.js";
 import expensesRouter from "./routes/expenses.js";
+<<<<<<< HEAD
 import realEstateRouter from "./routes/realEstate.js";
+=======
+>>>>>>> origin/main
 
 const app = express();
 

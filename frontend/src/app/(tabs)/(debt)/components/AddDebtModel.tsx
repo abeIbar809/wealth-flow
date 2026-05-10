@@ -33,22 +33,24 @@ const FREQUENCIES: { label: string; value: PaymentFrequency }[] = [
 ];
 
 export default function AddDebtModal({ visible, onClose, onSubmit, initial }: Props) {
- const [name, setName]                   = useState(initial?.name ?? "");
+  const [name, setName]                   = useState(initial?.name ?? "");
   const [totalAmount, setTotalAmount]     = useState(initial?.totalAmount?.toString() ?? "");
   const [interestRate, setInterestRate]   = useState(initial?.interestRate?.toString() ?? "");
   const [frequency, setFrequency]         = useState<PaymentFrequency>(initial?.paymentFrequency ?? "monthly");
   const [paymentAmount, setPaymentAmount] = useState(initial?.paymentAmount?.toString() ?? "");
 
+  // Pre-fills the form when editing an existing debt
   useEffect(() => {
     if (initial) {
-    setName(initial.name);
-    setTotalAmount(initial.totalAmount.toString());
-    setInterestRate(initial.interestRate?.toString() ?? "");
-    setFrequency(initial.paymentFrequency);
-    setPaymentAmount(initial.paymentAmount.toString());
+      setName(initial.name);
+      setTotalAmount(initial.totalAmount.toString());
+      setInterestRate(initial.interestRate?.toString() ?? "");
+      setFrequency(initial.paymentFrequency);
+      setPaymentAmount(initial.paymentAmount.toString());
     }
-}, [initial]);
+  }, [initial]);
 
+  // Validates inputs before sending them up to the parent
   const handleSubmit = () => {
     if (!name.trim() || !totalAmount || !paymentAmount) {
       Alert.alert("Please fill in all required fields.");
@@ -106,6 +108,7 @@ export default function AddDebtModal({ visible, onClose, onSubmit, initial }: Pr
               className="bg-[#F4F6FA] rounded-xl px-3 h-11 mb-4"
             />
 
+            {/* Chip buttons to pick how often payments are made */}
             <AppText type="defaultSemiBold" className="text-gray-700 mb-2">Payment Frequency *</AppText>
             <View className="flex-row gap-2 mb-4">
               {FREQUENCIES.map((f) => (
