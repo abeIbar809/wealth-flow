@@ -7,43 +7,84 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
+  Dimensions,
 } from "react-native";
+import { BarChart } from "react-native-chart-kit";
+
 import useGoalsStore from "@/src/stores/useGoalsStore";
 import useSummaryStore from "@/src/stores/useSummaryStore";
 import useAuthStore from "@/src/stores/useAuthStore";
-import { getInsights } from "@/src/api/insights"; 
+import { getInsights } from "@/src/api/insights";
 
-const CATEGORIES = ["Groceries", "Dining", "Entertainment", "Transport", "Shopping", "Other"];
+const screenWidth = Dimensions.get("window").width;
+
+const CATEGORIES = [
+  "Groceries",
+  "Dining",
+  "Entertainment",
+  "Transport",
+  "Shopping",
+  "Other",
+];
 
 const FinancialPlanner: React.FC = () => {
   const { user } = useAuthStore();
-  const { weeklyGoal, isLoading: goalsLoading, createWeeklyGoal, updateWeeklyGoal } = useGoalsStore();
-  const { summary, isLoading: summaryLoading, fetchWeeklySummary } = useSummaryStore();
 
-  const [activeTab, setActiveTab] = useState<"goals" | "summary" | "insights">("goals");
+  const {
+    weeklyGoal,
+    isLoading: goalsLoading,
+    createWeeklyGoal,
+    fetchCurrentGoals,
+  } = useGoalsStore();
+
+  const {
+    summary,
+    isLoading: summaryLoading,
+    fetchWeeklySummary,
+  } = useSummaryStore();
+
+  const [activeTab, setActiveTab] = useState<
+    "goals" | "summary" | "insights" | "graph"
+  >("goals");
 
   const [limits, setLimits] = useState<{ [key: string]: string }>({});
-  const [spentAmounts, setSpentAmounts] = useState<{ [key: string]: string }>({});
   const [isSettingGoals, setIsSettingGoals] = useState(true);
 
   const [insights, setInsights] = useState<any>(null);
   const [insightsLoading, setInsightsLoading] = useState(false);
 
   useEffect(() => {
-    if (activeTab === "summary" && user?._id) {
+    if (!user?._id) return;
+
+    fetchCurrentGoals(user._id);
+
+    if (
+      activeTab === "goals" ||
+      activeTab === "summary" ||
+      activeTab === "graph"
+    ) {
       fetchWeeklySummary(user._id);
     }
 
-    if (activeTab === "insights" && user?._id) {
+    if (activeTab === "insights") {
       loadInsights();
     }
-  }, [activeTab]);
+  }, [activeTab, user?._id]);
+
+  useEffect(() => {
+    if (weeklyGoal?._id) {
+      setIsSettingGoals(false);
+    }
+  }, [weeklyGoal?._id]);
 
   const loadInsights = async () => {
     try {
       if (!user?._id) return;
+
       setInsightsLoading(true);
+
       const res = await getInsights(user._id);
+
       setInsights(res.data.insights);
     } catch (err) {
       console.error("Insights error:", err);
@@ -52,7 +93,26 @@ const FinancialPlanner: React.FC = () => {
     }
   };
 
+  const getGraphData = () => {
+    if (!summary) return null;
+
+    return {
+      labels: ["Income", "Expenses"],
+      datasets: [
+        {
+          data: [
+            summary.thisWeek?.income || 0,
+            summary.thisWeek?.expenses || 0,
+          ],
+        },
+      ],
+      legend: ["Income", "Expenses"],
+    };
+  };
+
   const handleSaveGoals = async () => {
+    if (!user?._id) return;
+
     const goals = CATEGORIES.map((cat) => ({
       category: cat,
       limit: Number(limits[cat] || 0),
@@ -60,92 +120,101 @@ const FinancialPlanner: React.FC = () => {
     })).filter((g) => g.limit > 0);
 
     if (goals.length === 0) {
-      Alert.alert("No goals set", "Please enter a limit for at least one category.");
+      Alert.alert(
+        "No goals set",
+        "Please enter a limit for at least one category."
+      );
       return;
     }
 
     const success = await createWeeklyGoal(user._id, goals);
+
     if (success) {
       setIsSettingGoals(false);
       Alert.alert("Success", "Weekly goals saved!");
     }
   };
 
-  const handleUpdateSpending = async () => {
-    if (!weeklyGoal?._id) return;
+  const categorySpending = summary?.thisWeek?.byCategory ?? {};
 
-    const updatedGoals = weeklyGoal.goals.map((g) => ({
-      ...g,
-      spent: g.spent + Number(spentAmounts[g.category] || 0),
-    }));
+  const goalsWithTransactionSpending =
+    weeklyGoal?.goals.map((goal) => ({
+      ...goal,
+      spent: Number(categorySpending[goal.category] ?? goal.spent ?? 0),
+    })) ?? [];
 
-    const success = await updateWeeklyGoal(weeklyGoal._id, updatedGoals);
-    if (success) {
-      setSpentAmounts({});
-      Alert.alert("Success", "Spending updated!");
-    }
-  };
+  const totalTransactionSpending =
+    summary?.thisWeek?.expenses ??
+    goalsWithTransactionSpending.reduce(
+      (sum, goal) => sum + goal.spent,
+      0
+    );
 
   const getProgressColor = (spent: number, limit: number) => {
     const ratio = spent / limit;
+
     if (ratio >= 1) return "#FF3B30";
     if (ratio >= 0.75) return "#FF9500";
+
     return "#03BF62";
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={{ paddingBottom: 100 }}
+    >
       <Text style={styles.header}>Weekly Planner</Text>
 
       {/* Tabs */}
       <View style={styles.tabContainer}>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === "goals" && styles.activeTab]}
-          onPress={() => setActiveTab("goals")}
-        >
-          <Text style={[styles.tabText, activeTab === "goals" && styles.activeTabText]}>
-            Goals
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.tab, activeTab === "summary" && styles.activeTab]}
-          onPress={() => setActiveTab("summary")}
-        >
-          <Text style={[styles.tabText, activeTab === "summary" && styles.activeTabText]}>
-            Summary
-          </Text>
-        </TouchableOpacity>
-
-        {/* Insights Tab */}
-        <TouchableOpacity
-          style={[styles.tab, activeTab === "insights" && styles.activeTab]}
-          onPress={() => setActiveTab("insights")}
-        >
-          <Text style={[styles.tabText, activeTab === "insights" && styles.activeTabText]}>
-            Insights
-          </Text>
-        </TouchableOpacity>
+        {["goals", "summary", "insights", "graph"].map((tab) => (
+          <TouchableOpacity
+            key={tab}
+            style={[styles.tab, activeTab === tab && styles.activeTab]}
+            onPress={() => setActiveTab(tab as any)}
+          >
+            <Text
+              style={[
+                styles.tabText,
+                activeTab === tab && styles.activeTabText,
+              ]}
+            >
+              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+            </Text>
+          </TouchableOpacity>
+        ))}
       </View>
 
+      {/* GOALS TAB */}
       {activeTab === "goals" && (
         <>
           {isSettingGoals ? (
             <View style={styles.card}>
-              <Text style={styles.cardTitle}>Set Your Weekly Limits</Text>
+              <Text style={styles.cardTitle}>
+                Set Your Weekly Limits
+              </Text>
+
               {CATEGORIES.map((cat) => (
                 <View key={cat} style={styles.row}>
                   <Text style={styles.categoryLabel}>{cat}</Text>
+
                   <TextInput
                     style={styles.input}
                     placeholder="$0"
                     keyboardType="numeric"
                     value={limits[cat] || ""}
-                    onChangeText={(val) => setLimits({ ...limits, [cat]: val })}
+                    onChangeText={(val) =>
+                      setLimits({ ...limits, [cat]: val })
+                    }
                   />
                 </View>
               ))}
-              <TouchableOpacity style={styles.button} onPress={handleSaveGoals}>
+
+              <TouchableOpacity
+                style={styles.button}
+                onPress={handleSaveGoals}
+              >
                 <Text style={styles.buttonText}>
                   {goalsLoading ? "Saving..." : "Save Goals"}
                 </Text>
@@ -154,168 +223,491 @@ const FinancialPlanner: React.FC = () => {
           ) : (
             <View>
               <View style={styles.card}>
-                <Text style={styles.cardTitle}>This Week's Progress</Text>
-                {weeklyGoal?.goals.map((goal) => (
-                  <View key={goal.category} style={styles.goalRow}>
+                <Text style={styles.cardTitle}>
+                  This Week's Progress
+                </Text>
+
+                <Text
+                  style={[
+                    styles.summaryValue,
+                    { marginBottom: 12 },
+                  ]}
+                >
+                  Spending is calculated from this week's
+                  transactions.
+                </Text>
+
+                {goalsWithTransactionSpending.map((goal) => (
+                  <View
+                    key={goal.category}
+                    style={styles.goalRow}
+                  >
                     <View style={styles.goalHeader}>
-                      <Text style={styles.categoryLabel}>{goal.category}</Text>
+                      <Text style={styles.categoryLabel}>
+                        {goal.category}
+                      </Text>
+
                       <Text style={styles.goalAmount}>
                         ${goal.spent} / ${goal.limit}
                       </Text>
                     </View>
-                    <View style={styles.progressBarBackground}>
+
+                    <View
+                      style={styles.progressBarBackground}
+                    >
                       <View
                         style={[
                           styles.progressBarFill,
                           {
-                            width: `${Math.min((goal.spent / goal.limit) * 100, 100)}%`,
-                            backgroundColor: getProgressColor(goal.spent, goal.limit),
+                            width: `${Math.min(
+                              (goal.spent / goal.limit) * 100,
+                              100
+                            )}%`,
+                            backgroundColor: getProgressColor(
+                              goal.spent,
+                              goal.limit
+                            ),
                           },
                         ]}
                       />
                     </View>
                   </View>
                 ))}
+
                 <View style={styles.totalRow}>
                   <Text style={styles.totalLabel}>Total</Text>
+
                   <Text style={styles.totalAmount}>
-                    ${weeklyGoal?.totalSpent} / ${weeklyGoal?.totalLimit}
+                    ${totalTransactionSpending} / $
+                    {weeklyGoal?.totalLimit ?? 0}
                   </Text>
                 </View>
-              </View>
-
-              <View style={styles.card}>
-                <Text style={styles.cardTitle}>Log Spending</Text>
-                {weeklyGoal?.goals.map((goal) => (
-                  <View key={goal.category} style={styles.row}>
-                    <Text style={styles.categoryLabel}>{goal.category}</Text>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="$0"
-                      keyboardType="numeric"
-                      value={spentAmounts[goal.category] || ""}
-                      onChangeText={(val) =>
-                        setSpentAmounts({ ...spentAmounts, [goal.category]: val })
-                      }
-                    />
-                  </View>
-                ))}
-                <TouchableOpacity style={styles.button} onPress={handleUpdateSpending}>
-                  <Text style={styles.buttonText}>
-                    {goalsLoading ? "Updating..." : "Update Spending"}
-                  </Text>
-                </TouchableOpacity>
               </View>
 
               <TouchableOpacity
                 style={[styles.button, styles.resetButton]}
                 onPress={() => setIsSettingGoals(true)}
               >
-                <Text style={styles.buttonText}>Set New Goals</Text>
+                <Text style={styles.buttonText}>
+                  Set New Goals
+                </Text>
               </TouchableOpacity>
             </View>
           )}
         </>
       )}
 
-      {/* Summary Tab */}
+      {/* SUMMARY TAB */}
       {activeTab === "summary" && (
         <>
           {summaryLoading ? (
-            <Text style={styles.loadingText}>Loading summary...</Text>
+            <Text style={styles.loadingText}>
+              Loading summary...
+            </Text>
           ) : summary ? (
             <>
               <View style={styles.card}>
                 <Text style={styles.cardTitle}>This Week</Text>
+
                 <View style={styles.summaryRow}>
                   <Text style={styles.summaryLabel}>Income</Text>
-                  <Text style={[styles.summaryValue, styles.income]}>
-                    +${summary.thisWeek.income.toFixed(2)}
+
+                  <Text
+                    style={[
+                      styles.summaryValue,
+                      styles.income,
+                    ]}
+                  >
+                    +$
+                    {summary.thisWeek.income.toFixed(2)}
                   </Text>
                 </View>
+
                 <View style={styles.summaryRow}>
-                  <Text style={styles.summaryLabel}>Expenses</Text>
-                  <Text style={[styles.summaryValue, styles.expense]}>
-                    -${summary.thisWeek.expenses.toFixed(2)}
+                  <Text style={styles.summaryLabel}>
+                    Expenses
+                  </Text>
+
+                  <Text
+                    style={[
+                      styles.summaryValue,
+                      styles.expense,
+                    ]}
+                  >
+                    -$
+                    {summary.thisWeek.expenses.toFixed(2)}
                   </Text>
                 </View>
-                <View style={[styles.summaryRow, styles.totalRow]}>
-                  <Text style={styles.totalLabel}>Net Cash Flow</Text>
-                  <Text style={[styles.totalAmount, summary.thisWeek.netCashFlow >= 0 ? styles.income : styles.expense]}>
-                    ${summary.thisWeek.netCashFlow.toFixed(2)}
+
+                <View
+                  style={[
+                    styles.summaryRow,
+                    styles.totalRow,
+                  ]}
+                >
+                  <Text style={styles.totalLabel}>
+                    Net Cash Flow
+                  </Text>
+
+                  <Text
+                    style={[
+                      styles.totalAmount,
+                      summary.thisWeek.netCashFlow >= 0
+                        ? styles.income
+                        : styles.expense,
+                    ]}
+                  >
+                    $
+                    {summary.thisWeek.netCashFlow.toFixed(
+                      2
+                    )}
                   </Text>
                 </View>
               </View>
 
               <View style={styles.card}>
-                <Text style={styles.cardTitle}>Spending by Category</Text>
-                {Object.entries(summary.thisWeek.byCategory).map(([category, amount]) => (
-                  <View key={category} style={styles.summaryRow}>
-                    <Text style={styles.categoryLabel}>{category}</Text>
-                    <Text style={styles.summaryValue}>${amount.toFixed(2)}</Text>
-                  </View>
-                ))}
+                <Text style={styles.cardTitle}>
+                  Spending by Category
+                </Text>
+
+                {Object.keys(
+                  summary.thisWeek.byCategory || {}
+                ).length === 0 ? (
+                  <Text style={styles.loadingText}>
+                    No categorized spending available.
+                  </Text>
+                ) : (
+                  Object.entries(
+                    summary.thisWeek.byCategory || {}
+                  ).map(([category, amount]) => (
+                    <View
+                      key={category}
+                      style={styles.summaryRow}
+                    >
+                      <Text
+                        style={styles.categoryLabel}
+                      >
+                        {category}
+                      </Text>
+
+                      <Text
+                        style={styles.summaryValue}
+                      >
+                        $
+                        {Number(amount).toFixed(2)}
+                      </Text>
+                    </View>
+                  ))
+                )}
               </View>
 
               <View style={styles.card}>
-                <Text style={styles.cardTitle}>Compared to Last Week</Text>
+                <Text style={styles.cardTitle}>
+                  Compared to Last Week
+                </Text>
+
                 <View style={styles.summaryRow}>
-                  <Text style={styles.summaryLabel}>Income Change</Text>
-                  <Text style={styles.summaryValue}>{summary.comparison.incomeChange}</Text>
+                  <Text style={styles.summaryLabel}>
+                    Income Change
+                  </Text>
+
+                  <Text style={styles.summaryValue}>
+                    {summary.comparison.incomeChange}
+                  </Text>
                 </View>
+
                 <View style={styles.summaryRow}>
-                  <Text style={styles.summaryLabel}>Expense Change</Text>
-                  <Text style={styles.summaryValue}>{summary.comparison.expenseChange}</Text>
+                  <Text style={styles.summaryLabel}>
+                    Expense Change
+                  </Text>
+
+                  <Text style={styles.summaryValue}>
+                    {summary.comparison.expenseChange}
+                  </Text>
                 </View>
               </View>
             </>
           ) : (
-            <Text style={styles.loadingText}>No transaction data available yet.</Text>
+            <Text style={styles.loadingText}>
+              No transaction data available yet.
+            </Text>
           )}
         </>
       )}
 
-      {/* Insights Tab */}
+      {/* INSIGHTS TAB */}
       {activeTab === "insights" && (
         <>
           {insightsLoading ? (
-            <Text style={styles.loadingText}>Analyzing your finances...</Text>
+            <Text style={styles.loadingText}>
+              Analyzing your finances...
+            </Text>
           ) : insights ? (
             <>
-              <View style={styles.card}>
-                <Text style={styles.cardTitle}>📈 Trends</Text>
-                <Text style={styles.summaryValue}>{insights.trends}</Text>
+              <View
+                style={[
+                  styles.card,
+                  { alignItems: "center" },
+                ]}
+              >
+                <Text style={styles.cardTitle}>
+                  📊 Financial Health
+                </Text>
+
+                {(() => {
+                  const score = insights.score || 70;
+
+                  const color =
+                    score >= 75
+                      ? "#03BF62"
+                      : score >= 50
+                      ? "#FF9500"
+                      : "#FF3B30";
+
+                  return (
+                    <>
+                      <Text
+                        style={{
+                          fontSize: 42,
+                          fontWeight: "bold",
+                          color,
+                        }}
+                      >
+                        {score}
+                      </Text>
+
+                      <Text style={{ color: "#666" }}>
+                        {score >= 75
+                          ? "Strong"
+                          : score >= 50
+                          ? "Needs Improvement"
+                          : "At Risk"}
+                      </Text>
+                    </>
+                  );
+                })()}
               </View>
 
               <View style={styles.card}>
-                <Text style={styles.cardTitle}>⚠️ Risks</Text>
-                <Text style={[styles.summaryValue, styles.expense]}>
+                <Text style={styles.cardTitle}>
+                  📈 Trends
+                </Text>
+
+                <Text style={styles.summaryValue}>
+                  {insights.trends}
+                </Text>
+              </View>
+
+              <View
+                style={[
+                  styles.card,
+                  { borderColor: "#FF3B30" },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.cardTitle,
+                    { color: "#FF3B30" },
+                  ]}
+                >
+                  ⚠️ Risks Detected
+                </Text>
+
+                <Text
+                  style={[
+                    styles.summaryValue,
+                    styles.expense,
+                  ]}
+                >
                   {insights.risks}
                 </Text>
               </View>
 
-              <View style={styles.card}>
-                <Text style={styles.cardTitle}>💡 Opportunities</Text>
+              <View
+                style={[
+                  styles.card,
+                  { borderColor: "#03BF62" },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.cardTitle,
+                    { color: "#03BF62" },
+                  ]}
+                >
+                  💰 Savings Opportunities
+                </Text>
+
                 <Text style={styles.summaryValue}>
                   {insights.savings_opportunities}
                 </Text>
               </View>
 
               <View style={styles.card}>
-                <Text style={styles.cardTitle}>✅ Recommendations</Text>
-                {insights.recommendations?.map((rec: string, i: number) => (
-                  <Text key={i} style={styles.summaryValue}>
-                    • {rec}
-                  </Text>
-                ))}
+                <Text style={styles.cardTitle}>
+                  ✅ Action Plan
+                </Text>
+
+                {insights.recommendations?.map(
+                  (rec: string, i: number) => (
+                    <View
+                      key={i}
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "flex-start",
+                        marginBottom: 8,
+                      }}
+                    >
+                      <Text
+                        style={{ marginRight: 8 }}
+                      >
+                        👉
+                      </Text>
+
+                      <Text
+                        style={{
+                          flex: 1,
+                          color: "#333",
+                        }}
+                      >
+                        {rec}
+                      </Text>
+                    </View>
+                  )
+                )}
               </View>
 
-              <TouchableOpacity style={styles.button} onPress={loadInsights}>
-                <Text style={styles.buttonText}>Refresh Insights</Text>
+              <TouchableOpacity
+                style={styles.button}
+                onPress={loadInsights}
+              >
+                <Text style={styles.buttonText}>
+                  Refresh Insights
+                </Text>
               </TouchableOpacity>
             </>
           ) : (
-            <Text style={styles.loadingText}>No insights available.</Text>
+            <Text style={styles.loadingText}>
+              No insights available.
+            </Text>
+          )}
+        </>
+      )}
+
+      {/* GRAPH TAB */}
+      {activeTab === "graph" && (
+        <>
+          {summaryLoading ? (
+            <Text style={styles.loadingText}>
+              Loading graph...
+            </Text>
+          ) : summary ? (
+            <>
+              <View style={styles.card}>
+                <Text style={styles.cardTitle}>
+                  💡 Spending Insight
+                </Text>
+
+                <Text style={styles.summaryValue}>
+                  You spent{" "}
+                  {(
+                    ((summary.thisWeek?.expenses || 0) /
+                      (summary.thisWeek?.income || 1)) *
+                    100
+                  ).toFixed(0)}
+                  % of your income
+                </Text>
+              </View>
+
+              <View style={styles.card}>
+                <Text style={styles.cardTitle}>
+                  📊 This Week: Income vs Expenses
+                </Text>
+
+                <BarChart
+                  data={getGraphData()!}
+                  width={screenWidth - 40}
+                  height={220}
+                  yAxisLabel="$"
+                  yAxisSuffix=""
+                  fromZero
+                  chartConfig={{
+                    backgroundColor: "#fff",
+                    backgroundGradientFrom: "#fff",
+                    backgroundGradientTo: "#fff",
+                    decimalPlaces: 0,
+                    color: () => "#2b67ff",
+                    labelColor: () => "#333",
+                  }}
+                  style={{ borderRadius: 8 }}
+                />
+              </View>
+
+              <View style={styles.card}>
+                <Text style={styles.cardTitle}>
+                  🧾 Expense Breakdown
+                </Text>
+
+                {(() => {
+                  const categories = Object.entries(
+                    summary.thisWeek.byCategory || {}
+                  );
+
+                  const total = categories.reduce(
+                    (sum, [, amount]) =>
+                      sum + Number(amount),
+                    0
+                  );
+
+                  return categories
+                    .sort(
+                      (a, b) =>
+                        Number(b[1]) - Number(a[1])
+                    )
+                    .map(
+                      ([category, amount], index) => {
+                        const value = Number(amount);
+
+                        const percentage =
+                          total > 0
+                            ? (value / total) * 100
+                            : 0;
+
+                        return (
+                          <View
+                            key={category}
+                            style={styles.summaryRow}
+                          >
+                            <Text
+                              style={
+                                styles.categoryLabel
+                              }
+                            >
+                              {index === 0 ? "1. " : ""}
+                              {category}
+                            </Text>
+
+                            <Text
+                              style={
+                                styles.summaryValue
+                              }
+                            >
+                              $
+                              {value.toFixed(2)} (
+                              {percentage.toFixed(0)}
+                              %)
+                            </Text>
+                          </View>
+                        );
+                      }
+                    );
+                })()}
+              </View>
+            </>
+          ) : (
+            <Text style={styles.loadingText}>
+              No data available.
+            </Text>
           )}
         </>
       )}

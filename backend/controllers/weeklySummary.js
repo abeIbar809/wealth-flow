@@ -32,7 +32,7 @@ const getWeeklySummary = async (req, res) => {
         //calculate this week's totals
         const thisWeekIncome = thisWeekTransactions
             .filter(t => t.transaction_type === 'income')
-            .reduce((sum, t) => sum + t.amount, 0);
+            .reduce((sum, t) => sum + Math.abs(t.amount), 0);
             
         const thisWeekExpenses = thisWeekTransactions
             .filter(t => t.transaction_type === 'expense')
@@ -41,7 +41,7 @@ const getWeeklySummary = async (req, res) => {
         //calculate last week's totals
         const lastWeekIncome = lastWeekTransactions
             .filter(t => t.transaction_type === 'income')
-            .reduce((sum, t) => sum + t.amount, 0);
+            .reduce((sum, t) => sum + Math.abs(t.amount), 0);
             
         const lastWeekExpenses = lastWeekTransactions
             .filter(t => t.transaction_type === 'expense')

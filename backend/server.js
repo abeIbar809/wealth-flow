@@ -10,6 +10,7 @@ import weeklySummaryRouter from "./routes/weeklySummary.js";
 import expensesRouter from "./routes/expenses.js";
 import insightRoutes from "./routes/insight.js";
 
+
 const app = express();
 
 // Middleware
