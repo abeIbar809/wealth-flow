@@ -12,13 +12,10 @@ import { StatusBar } from "expo-status-bar";
 import React, { useEffect, useCallback } from "react";
 import { RefreshControl, ScrollView, TouchableOpacity, View } from "react-native";
 import ExpensePieChart from "@/src/components/ExpensePieChart";
-<<<<<<< HEAD
 import { AppText } from "@/src/components/common/app-text";
-=======
 import * as Haptics from "expo-haptics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
->>>>>>> origin/main
 export default function HomeIndex() {
 
   const {
@@ -50,10 +47,7 @@ export default function HomeIndex() {
   }, []);
 
   const handleRefresh = useCallback(async () => {
-<<<<<<< HEAD
-=======
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
->>>>>>> origin/main
     try {
       await refreshAllData();
     } catch (error) {
