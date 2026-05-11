@@ -106,6 +106,7 @@ const FinancialPlanner: React.FC = () => {
   const [incomeInput, setIncomeInput] = useState("");
   const [limits, setLimits] = useState<{ [key: string]: string }>({});
   const [isSettingGoals, setIsSettingGoals] = useState(true);
+  const [spentAmounts, setSpentAmounts] = useState<{ [key: string]: string }>({});
 
   const [insights, setInsights] = useState<any>(null);
   const [insightsLoading, setInsightsLoading] = useState(false);
@@ -138,14 +139,20 @@ const FinancialPlanner: React.FC = () => {
   useEffect(() => {
     if (!user?._id) return;
 
-    fetchCurrentGoals(user._id);
-
+    
     if (
       activeTab === "goals" ||
       activeTab === "summary" ||
       activeTab === "graph"
     ) {
+      fetchCurrentGoals(user._id);
       fetchWeeklySummary(user._id);
+    }
+
+    if (user?._id && activeTab === "transactions") {
+      fetchAccounts()
+      setVisibleCount(10);
+      searchTransactions(user._id, getDateRange("this_month"));
     }
 
     if (activeTab === "insights") {
@@ -205,17 +212,7 @@ const FinancialPlanner: React.FC = () => {
       ...dateFilters,
     });
   };
-
 const handleSaveGoals = async () => {
-
-    if (!user?._id) return;
-
-    if (activeTab === "transactions" && user?._id) {
-      if (accounts.length === 0) fetchAccounts();
-      setVisibleCount(10);
-      searchTransactions(user._id, getDateRange("this_month"));
-    }
-
     const goals = CATEGORIES.map((cat) => ({
       category: cat,
       limit: Number(limits[cat] || 0),
@@ -247,9 +244,23 @@ const handleSaveGoals = async () => {
     }
   };
 
+  
+
   const handleUpdateSpending = async () => {
     if (!weeklyGoal?._id) return;
-  }
+
+    const updatedGoals = weeklyGoal.goals.map((g) => ({
+      ...g,
+      spent: g.spent + Number(spentAmounts[g.category] || 0),
+    }));
+
+    const success = await updateWeeklyGoal(weeklyGoal._id, updatedGoals);
+    if (success) {
+      setSpentAmounts({});
+      Alert.alert("Success", "Spending updated!");
+    }
+  };
+
 
   const goalsWithTransactionSpending =
     weeklyGoal?.goals.map((goal) => ({
@@ -584,6 +595,7 @@ const handleSaveGoals = async () => {
                   transactions.
                 </Text>
 
+                
                 {goalsWithTransactionSpending.map((goal) => (
                   <View
                     key={goal.category}
@@ -621,6 +633,8 @@ const handleSaveGoals = async () => {
                   </View>
                 ))}
 
+
+
                 <View style={styles.totalRow}>
                   <Text style={styles.totalLabel}>Total</Text>
 
@@ -630,6 +644,28 @@ const handleSaveGoals = async () => {
                   </Text>
                 </View>
               </View>
+
+               <Text style={styles.cardTitle}>Log Spending</Text>
+                {weeklyGoal?.goals.map((goal) => (
+                  <View key={goal.category} style={styles.row}>
+                    <Text style={styles.categoryLabel}>{goal.category}</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="$0"
+                      keyboardType="numeric"
+                      value={spentAmounts[goal.category] || ""}
+                      onChangeText={(val) =>
+                        setSpentAmounts({ ...spentAmounts, [goal.category]: val })
+                      }
+                    />
+                  </View>
+                ))}
+
+              <TouchableOpacity style={styles.button} onPress={handleUpdateSpending}>
+                  <Text style={styles.buttonText}>
+                    {goalsLoading ? "Updating..." : "Update Spending"}
+                  </Text>
+                </TouchableOpacity>
 
               <TouchableOpacity
                 style={[styles.button, styles.syncButton]}
