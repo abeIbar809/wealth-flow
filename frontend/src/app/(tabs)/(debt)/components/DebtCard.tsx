@@ -22,6 +22,7 @@ type Props = {
   onExtraPayment: (id: string, amount: number) => void;
 };
 
+// Converts payment frequency to how many payments happen per year
 function getPaymentsPerYear(freq: PaymentFrequency): number {
   if (freq === "weekly")    return 52;
   if (freq === "bi-weekly") return 26;
@@ -40,6 +41,7 @@ function calcPayoffInfo(debt: Debt): { years: number; remainingMonths: number } 
   if (ratePerPeriod === 0) {
     periods = remainingAmount / paymentAmount;
   } else {
+    // Returns null if the payment isn't enough to outpace the interest
     if (paymentAmount <= remainingAmount * ratePerPeriod) return null;
     periods = Math.log(paymentAmount / (paymentAmount - remainingAmount * ratePerPeriod)) / Math.log(1 + ratePerPeriod);
   }
@@ -66,15 +68,17 @@ export default function DebtCard({ debt, onEdit, onDelete, onExtraPayment }: Pro
     { value: Math.max(debt.remainingAmount, 0), color: "#E8F5E9" },
   ];
 
+  // Validates the amount before passing it up to the parent
   const handleExtraPayment = () => {
     const amount = parseFloat(extraAmount);
-    if (isNaN(amount) || amount <= 0)     { Alert.alert("Enter a valid amount.");          return; }
-    if (amount > debt.remainingAmount)    { Alert.alert("Amount exceeds remaining debt."); return; }
+    if (isNaN(amount) || amount <= 0)  { Alert.alert("Enter a valid amount.");          return; }
+    if (amount > debt.remainingAmount) { Alert.alert("Amount exceeds remaining debt."); return; }
     onExtraPayment(debt._id, amount);
     setExtraAmount("");
     setShowExtraModal(false);
   };
 
+  // Confirms before deleting since the action can't be undone
   const handleDelete = () => {
     Alert.alert("Delete Debt", `Are you sure you want to delete "${debt.name}"?`, [
       { text: "Cancel" },
@@ -113,12 +117,14 @@ export default function DebtCard({ debt, onEdit, onDelete, onExtraPayment }: Pro
                 {payoffInfo.remainingMonths}mo
               </AppText>
             ) : (
+              // Warns the user their payment won't make a dent against interest
               <AppText type="caption" className="text-red-400 mt-0.5">
                 ⚠️ Payment too low to cover interest
               </AppText>
             )}
           </View>
 
+          {/* Donut chart showing paid vs remaining as a quick visual */}
           <View className="items-center ml-3">
             <PieChart
               data={pieData}
@@ -132,6 +138,7 @@ export default function DebtCard({ debt, onEdit, onDelete, onExtraPayment }: Pro
             </AppText>
           </View>
 
+          {/* Arrow icon flips direction to hint the card is expandable */}
           <AppText type="normal" className="text-gray-400 ml-2">
             {expanded ? "▲" : "▼"}
           </AppText>
@@ -142,6 +149,7 @@ export default function DebtCard({ debt, onEdit, onDelete, onExtraPayment }: Pro
       {expanded && !isPaidOff && (
         <View className="mt-4 border-t border-gray-100 pt-4">
 
+          {/* Stats breakdown showing original, remaining, paid, interest and schedule */}
           <View className="bg-[#F4F6FA] rounded-xl p-3 mb-3">
             <View className="flex-row justify-between mb-1">
               <AppText type="normal" className="text-gray-500">Original Debt</AppText>
@@ -165,6 +173,7 @@ export default function DebtCard({ debt, onEdit, onDelete, onExtraPayment }: Pro
                 ${debt.paymentAmount} / {debt.paymentFrequency}
               </AppText>
             </View>
+            {/* Only shown when the user has made at least one extra payment */}
             {debt.extraPayments > 0 && (
               <View className="flex-row justify-between">
                 <AppText type="normal" className="text-gray-500">Extra Paid</AppText>
@@ -223,6 +232,7 @@ export default function DebtCard({ debt, onEdit, onDelete, onExtraPayment }: Pro
             <AppText type="normal" className="text-gray-500 mb-1">
               Remaining: ${debt.remainingAmount.toFixed(2)}
             </AppText>
+            {/* Reassures the user this won't mess with their regular schedule */}
             <AppText type="normal" className="text-gray-400 mb-4">
               This won't affect your scheduled payments.
             </AppText>

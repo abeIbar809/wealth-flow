@@ -23,9 +23,11 @@ type Props = {
   visible: boolean;
   onClose: () => void;
   onSubmit: (debt: DebtInput) => void;
+  // Passed in when editing so the form pre-fills with existing values
   initial?: DebtInput | null;
 };
 
+// All three payment schedule options shown as chip buttons
 const FREQUENCIES: { label: string; value: PaymentFrequency }[] = [
   { label: "Weekly",    value: "weekly"    },
   { label: "Bi-Weekly", value: "bi-weekly" },
@@ -33,6 +35,7 @@ const FREQUENCIES: { label: string; value: PaymentFrequency }[] = [
 ];
 
 export default function AddDebtModal({ visible, onClose, onSubmit, initial }: Props) {
+  // Each field is its own piece of state so inputs stay independent
   const [name, setName]                   = useState(initial?.name ?? "");
   const [totalAmount, setTotalAmount]     = useState(initial?.totalAmount?.toString() ?? "");
   const [interestRate, setInterestRate]   = useState(initial?.interestRate?.toString() ?? "");
@@ -58,6 +61,7 @@ export default function AddDebtModal({ visible, onClose, onSubmit, initial }: Pr
     }
     const total    = parseFloat(totalAmount);
     const payment  = parseFloat(paymentAmount);
+    // Defaults to 0 if the interest field is left blank
     const interest = parseFloat(interestRate) || 0;
 
     if (isNaN(total)   || total <= 0)   { Alert.alert("Enter a valid total amount.");   return; }
@@ -67,17 +71,22 @@ export default function AddDebtModal({ visible, onClose, onSubmit, initial }: Pr
     resetForm();
   };
 
+  // Wipes all fields back to their blank defaults
   const resetForm = () => {
     setName(""); setTotalAmount(""); setInterestRate(""); setFrequency("monthly"); setPaymentAmount("");
   };
 
+  // Resets the form before closing so it's clean next time
   const handleClose = () => { resetForm(); onClose(); };
 
   return (
+    // Slides up from the bottom as a sheet over the current screen
     <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
       <View className="flex-1 bg-black/50 justify-end">
         <View className="bg-white rounded-t-3xl p-6">
           <ScrollView showsVerticalScrollIndicator={false}>
+
+            {/* Title changes depending on whether we're adding or editing */}
             <AppText type="subtitle" className="text-[#03BF62] mb-5">
               {initial ? "Edit Debt" : "Add New Debt"}
             </AppText>
@@ -99,6 +108,7 @@ export default function AddDebtModal({ visible, onClose, onSubmit, initial }: Pr
               className="bg-[#F4F6FA] rounded-xl px-3 h-11 mb-4"
             />
 
+            {/* Optional field — leaving it blank defaults to 0% interest */}
             <AppText type="defaultSemiBold" className="text-gray-700 mb-1">Interest Rate (% per year)</AppText>
             <TextInput
               placeholder="e.g. 5.5 (leave blank if none)"
@@ -137,6 +147,7 @@ export default function AddDebtModal({ visible, onClose, onSubmit, initial }: Pr
               className="bg-[#F4F6FA] rounded-xl px-3 h-11 mb-6"
             />
 
+            {/* Cancel discards changes, submit sends data up to the parent */}
             <View className="flex-row gap-3">
               <TouchableOpacity
                 onPress={handleClose}
@@ -153,6 +164,7 @@ export default function AddDebtModal({ visible, onClose, onSubmit, initial }: Pr
                 </AppText>
               </TouchableOpacity>
             </View>
+
           </ScrollView>
         </View>
       </View>

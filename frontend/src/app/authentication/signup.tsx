@@ -13,20 +13,19 @@ export default function SignUp() {
   const router = useRouter();
   const { attemptSignup, isLoading, error, clearError } = useAuthStore();
 
+  // All the fields the user needs to fill in
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [phone, setPhone] = useState("");
 
-  // Back to login page
   function onBackPressed() {
     router.dismiss();
   }
 
-  // Handle signup attempt
+  // Validates inputs, creates account, then sends to walkthrough
   async function onNextPressed() {
-    // Validation
     if (!name.trim() || !email.trim() || !password.trim() || !confirmPassword.trim() || !phone.trim()) {
       Alert.alert("Error", "Please fill in all fields");
       return;
@@ -64,6 +63,7 @@ export default function SignUp() {
           <Text className="font-bold text-3xl text-white">Create your Account 🚀</Text>
         </View>
 
+        {/* White card holding all the input fields */}
         <View className="h-5/6 w-full bg-white rounded-[40] items-center justify-evenly">
 
           <GroupedPageSection className="items-center">
@@ -128,6 +128,7 @@ export default function SignUp() {
             />
           </GroupedPageSection>
 
+          {/* Shows spinner while waiting for the server response */}
           <GroupedPageSection>
             <TouchableOpacity
               className="bg-[#03BF62] w-4/5 rounded-[20] h-[35] items-center justify-center"
