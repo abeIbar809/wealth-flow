@@ -1,7 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 
 // Initialize Gemini AI client
-const ai = new GoogleGenAI({});
+const ai = new GoogleGenAI({apiKey: process.env.GoogleGenAI});
 
 // Function to generate financial insights from data
 export async function generateFinancialInsights(data) {

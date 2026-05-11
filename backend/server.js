@@ -11,6 +11,8 @@ import expensesRouter from "./routes/expenses.js";
 import realEstateRouter from "./routes/realEstate.js";
 import insightRoutes from "./routes/insight.js";
 
+import taxEstimationRouter from "./routes/taxEstimation.js";
+import transactionsRouter from "./routes/transactions.js";
 
 const app = express();
 
@@ -338,8 +340,11 @@ app.use("/users", userrouter);
 app.use("/api/expenses", expensesRouter)
 console.log("Registering /api/insights route");
 app.use("/api/insights", insightRoutes);
+//app.use("/api/expenses", expensesRouter)
 app.use("/weeklygoals", weeklyGoalRouter);
 app.use("/weeklysummary", weeklySummaryRouter);
+app.use("/taxestimation", taxEstimationRouter);
+app.use("/transactions", transactionsRouter);
 
 // Start Server
 const port = process.env.PORT || 9000;
