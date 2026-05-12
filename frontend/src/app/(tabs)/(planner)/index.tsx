@@ -19,7 +19,6 @@ import { Picker } from "@react-native-picker/picker";
 import useGoalsStore from "@/src/stores/useGoalsStore";
 import useSummaryStore from "@/src/stores/useSummaryStore";
 import useAuthStore from "@/src/stores/useAuthStore";
-import useTaxStore from "@/src/stores/useTaxStore";
 import useTransactionStore from "@/src/stores/useTransactionStore";
 import { useHomeStore } from "@/src/stores/useHomeStore";
 
@@ -68,8 +67,6 @@ const CATEGORIES = [
   "Other",
 ];
 
-const FILING_STATUSES = ["Single", "Married Filing Jointly", "Head of Household"];
-
 const TRANSACTION_CATEGORIES = [
   { label: "All Categories", value: "" },
   { label: "Food & Drink", value: "FOOD_AND_DRINK" },
@@ -97,13 +94,10 @@ const FinancialPlanner: React.FC = () => {
 
   const { weeklyGoal, isLoading: goalsLoading, createWeeklyGoal, updateWeeklyGoal, syncFromPlaid,fetchCurrentGoals } = useGoalsStore();
   const { summary, isLoading: summaryLoading, fetchWeeklySummary } = useSummaryStore();
-  const { taxResult, isLoading: taxLoading, error: taxError, calculateTax } = useTaxStore();
-  const { transactions, isLoading: txnLoading, searchTransactions } = useTransactionStore();
+  const { transactions, isLoading: txnLoading, error: txnError, searchTransactions } = useTransactionStore();
   const { accounts, fetchAccounts } = useHomeStore();
 
-  const [activeTab, setActiveTab] = useState<"transactions" | "goals" | "summary" | "taxes" | "insights" | "graph">("transactions");
-  const [filingStatus, setFilingStatus] = useState("Single");
-  const [incomeInput, setIncomeInput] = useState("");
+  const [activeTab, setActiveTab] = useState<"summary" | "transactions" | "goals" | "insights" | "graph">("summary");
   const [limits, setLimits] = useState<{ [key: string]: string }>({});
   const [isSettingGoals, setIsSettingGoals] = useState(true);
   const [spentAmounts, setSpentAmounts] = useState<{ [key: string]: string }>({});
@@ -114,7 +108,7 @@ const FinancialPlanner: React.FC = () => {
   const [merchantSearch, setMerchantSearch] = useState("");
   const [selectedAccount, setSelectedAccount] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
-  const [dateRange, setDateRange] = useState("this_month");
+  const [dateRange, setDateRange] = useState("all_time");
   const [minAmount, setMinAmount] = useState("");
   const [maxAmount, setMaxAmount] = useState("");
   const [visibleCount, setVisibleCount] = useState(10);
@@ -124,15 +118,20 @@ const FinancialPlanner: React.FC = () => {
   const handleRefresh = async () => {
     if (!user?._id) return;
     setIsRefreshing(true);
-    const dateFilters = getDateRange(dateRange);
-    await searchTransactions(user._id, {
-      accountId: selectedAccount || undefined,
-      category: selectedCategory || undefined,
-      merchantName: merchantSearch || undefined,
-      minAmount: minAmount || undefined,
-      maxAmount: maxAmount || undefined,
-      ...dateFilters,
-    });
+    if (activeTab === "transactions") {
+      const dateFilters = getDateRange(dateRange);
+      await searchTransactions(user._id, {
+        accountId: selectedAccount || undefined,
+        category: selectedCategory || undefined,
+        merchantName: merchantSearch || undefined,
+        minAmount: minAmount || undefined,
+        maxAmount: maxAmount || undefined,
+        ...dateFilters,
+      });
+    }
+    if (activeTab === "summary") {
+      await fetchWeeklySummary(user._id);
+    }
     setIsRefreshing(false);
   };
 
@@ -152,7 +151,7 @@ const FinancialPlanner: React.FC = () => {
     if (user?._id && activeTab === "transactions") {
       fetchAccounts()
       setVisibleCount(10);
-      searchTransactions(user._id, getDateRange("this_month"));
+      searchTransactions(user._id, getDateRange("all_time"));
     }
 
     if (activeTab === "insights") {
@@ -275,11 +274,6 @@ const handleSaveGoals = async () => {
       0
     );
 
-  const handleCalculateTax = async () => {
-    if (!user?._id) return;
-    await calculateTax(user._id, filingStatus, Number(incomeInput || 0));
-  };
-
   const getProgressColor = (spent: number, limit: number) => {
     const ratio = spent / limit;
 
@@ -354,7 +348,7 @@ const handleSaveGoals = async () => {
       contentContainerStyle={{ paddingBottom: 100 }}
     
       refreshControl={
-        activeTab === "transactions" ? (
+        activeTab === "transactions" || activeTab === "summary" ? (
           <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor="#2b67ff" />
         ) : undefined
       }
@@ -364,7 +358,7 @@ const handleSaveGoals = async () => {
 
       {/* Tabs */}
       <View style={styles.tabContainer}>
-        {["goals", "summary", "insights", "graph","transactions","taxes"].map((tab) => (
+        {["summary", "transactions", "goals", "insights", "graph"].map((tab) => (
           <TouchableOpacity
             key={tab}
             style={[styles.tab, activeTab === tab && styles.activeTab]}
@@ -477,7 +471,11 @@ const handleSaveGoals = async () => {
           )}
 
           {/* Transaction list */}
-          {txnLoading ? (
+          {txnError ? (
+            <View style={styles.errorCard}>
+              <Text style={styles.errorText}>Error: {txnError}</Text>
+            </View>
+          ) : txnLoading ? (
             <Text style={styles.loadingText}>Loading transactions...</Text>
           ) : transactions.length === 0 ? (
             <Text style={styles.loadingText}>No transactions found</Text>
@@ -639,13 +637,13 @@ const handleSaveGoals = async () => {
                   <Text style={styles.totalLabel}>Total</Text>
 
                   <Text style={styles.totalAmount}>
-                    ${totalTransactionSpending} / $
-                    {weeklyGoal?.totalLimit ?? 0}
+                    ${formatCurrency(Number(totalTransactionSpending))} / ${formatCurrency(weeklyGoal?.totalLimit ?? 0)}
                   </Text>
                 </View>
               </View>
 
-               <Text style={styles.cardTitle}>Log Spending</Text>
+              <View style={styles.card}>
+                <Text style={styles.cardTitle}>Log Spending</Text>
                 {weeklyGoal?.goals.map((goal) => (
                   <View key={goal.category} style={styles.row}>
                     <Text style={styles.categoryLabel}>{goal.category}</Text>
@@ -661,29 +659,21 @@ const handleSaveGoals = async () => {
                   </View>
                 ))}
 
-              <TouchableOpacity style={styles.button} onPress={handleUpdateSpending}>
+                <TouchableOpacity style={styles.button} onPress={handleUpdateSpending}>
                   <Text style={styles.buttonText}>
                     {goalsLoading ? "Updating..." : "Update Spending"}
                   </Text>
                 </TouchableOpacity>
+              </View>
 
               <TouchableOpacity
-                style={[styles.button, styles.syncButton]}
-                onPress={handleSyncFromPlaid}
-              >
-                <Text style={styles.buttonText}>
-                  {goalsLoading ? "Syncing..." : "Sync from Bank"}
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.button, styles.resetButton]}
-                onPress={() => setIsSettingGoals(true)}
-              >
-                <Text style={styles.buttonText}>
-                  Set New Goals
-                </Text>
-              </TouchableOpacity>
+                  style={[styles.button, styles.resetButton]}
+                  onPress={() => setIsSettingGoals(true)}
+                >
+                  <Text style={styles.buttonText}>
+                    Set New Goals
+                  </Text>
+                </TouchableOpacity>
             </View>
           )}
         </>
@@ -700,7 +690,7 @@ const handleSaveGoals = async () => {
             <>
               {/* TOTAL SPENT - TOP CARD */}
               <View style={[styles.card, styles.totalSpentCard]}>
-                <Text style={styles.totalSpentLabel}>Total Spent This Week</Text>
+                <Text style={styles.totalSpentLabel}>Total Spent (Last 7 Days)</Text>
                 <Text style={styles.totalSpentAmount}>
                   ${summary.thisWeek.expenses.toFixed(2)}
                 </Text>
@@ -1132,73 +1122,6 @@ const handleSaveGoals = async () => {
           )}
         </>
       )}
-      {/* TAXES TAB */}
-      {activeTab === "taxes" && (
-        <>
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Filing Status</Text>
-            <View style={styles.pickerContainer}>
-              <Picker
-                selectedValue={filingStatus}
-                onValueChange={(value) => setFilingStatus(value)}
-                style={styles.picker}
-              >
-                {FILING_STATUSES.map((status) => (
-                  <Picker.Item key={status} label={status} value={status} />
-                ))}
-              </Picker>
-            </View>
-          </View>
-
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Total Yearly Income</Text>
-            <TextInput
-              style={styles.incomeInput}
-              placeholder="Enter amount"
-              keyboardType="numeric"
-              value={incomeInput}
-              onChangeText={setIncomeInput}
-            />
-<TouchableOpacity style={styles.button} onPress={handleCalculateTax}>
-              <Text style={styles.buttonText}>
-                {taxLoading ? "Calculating..." : "Calculate Tax Estimate"}
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          {taxError ? (
-            <View style={styles.errorCard}>
-              <Text style={styles.errorText}>{taxError}</Text>
-            </View>
-          ) : null}
-
-          {taxResult ? (
-            <View style={styles.card}>
-              <Text style={styles.cardTitle}>Tax Estimate Results</Text>
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Yearly Income</Text>
-                <Text style={styles.summaryValue}>${formatCurrency(taxResult.yearlyIncome)}</Text>
-              </View>
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Standard Deduction</Text>
-                <Text style={styles.summaryValue}>-${formatCurrency(taxResult.deductions)}</Text>
-              </View>
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Taxable Income</Text>
-                <Text style={styles.summaryValue}>${formatCurrency(taxResult.taxableIncome)}</Text>
-              </View>
-              <View style={[styles.summaryRow, styles.totalRow]}>
-                <Text style={styles.totalLabel}>Estimated Tax</Text>
-                <Text style={[styles.totalAmount, styles.expense]}>${formatCurrency(taxResult.estimatedTax)}</Text>
-              </View>
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Effective Rate</Text>
-                <Text style={styles.summaryValue}>{taxResult.effectiveRate.toFixed(1)}%</Text>
-              </View>
-            </View>
-          ) : null}
-        </>
-      )}
     </ScrollView>
   );
  };
@@ -1212,7 +1135,7 @@ const styles = StyleSheet.create({
   tabContainer: { flexDirection: "row", marginBottom: 20, backgroundColor: "#e0e0e0", borderRadius: 8, padding: 4 },
   tab: { flex: 1, paddingVertical: 8, alignItems: "center", borderRadius: 6 },
   activeTab: { backgroundColor: "#2b67ff" },
-  tabText: { fontSize: 12, color: "#666", fontWeight: "500" },
+  tabText: { fontSize: 11, color: "#666", fontWeight: "500" },
   activeTabText: { color: "#fff" },
   card: { padding: 15, borderWidth: 1, borderColor: "#2b67ff", borderRadius: 8, marginBottom: 15, backgroundColor: "#fff" },
   cardTitle: { fontSize: 18, fontWeight: "600", color: "#2b67ff", marginBottom: 10 },
@@ -1307,29 +1230,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#333"
   },
-  filingStatusContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    marginTop: 4,
-  },
-  filingStatusBtn: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: "#2b67ff",
-  },
-  filingStatusBtnActive: {
-    backgroundColor: "#2b67ff",
-  },
-  filingStatusText: {
-    fontSize: 14,
-    color: "#2b67ff",
-  },
-  filingStatusTextActive: {
-    color: "#fff",
-  },
   errorCard: {
     padding: 15,
     borderRadius: 8,
@@ -1342,20 +1242,6 @@ const styles = StyleSheet.create({
     color: "#FF3B30",
     fontSize: 14,
     textAlign: "center",
-  },
-  incomeHint: {
-    fontSize: 13,
-    color: "#888",
-    marginBottom: 10,
-  },
-  incomeInput: {
-    borderWidth: 1,
-    borderColor: "#2b67ff",
-    borderRadius: 5,
-    padding: 10,
-    fontSize: 18,
-    textAlign: "center",
-    marginBottom: 10,
   },
   importButton: {
     borderWidth: 1,

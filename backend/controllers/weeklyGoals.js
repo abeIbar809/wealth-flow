@@ -1,6 +1,5 @@
 import WeeklyGoal from './../models/weeklyGoal.js'
 import Transaction from './../models/transaction.js'
-import Bank from './../models/bank.js'
 
 //maps plaid personal_finance_category to goal category names
 const mapToGoalCategory = (primary = '', detailed = '') => {
@@ -74,25 +73,17 @@ const syncSpendingFromPlaid = async (req, res) => {
     const { userId } = req.params;
 
     try {
-        //check if user has a linked (non-manual) bank
-        const linkedBank = await Bank.findOne({ owner: userId, status: 'active', is_manual: false });
-        if (!linkedBank) {
-            return res.status(400).json({ message: 'No linked bank account found. Connect a bank via Plaid to sync spending.' });
-        }
-
-        //get current week date range
+        //rolling 7-day window matches the weeklySummary convention
         const now = new Date();
         const startOfWeek = new Date(now);
-        startOfWeek.setDate(now.getDate() - now.getDay());
+        startOfWeek.setDate(now.getDate() - 6);
         startOfWeek.setHours(0, 0, 0, 0);
-        const endOfWeek = new Date(startOfWeek);
-        endOfWeek.setDate(startOfWeek.getDate() + 7);
 
-        //fetch this week's expense transactions
+        //fetch last 7 days of expense transactions (includes manual and plaid)
         const transactions = await Transaction.find({
             owner: userId,
             transaction_type: 'expense',
-            date: { $gte: startOfWeek, $lt: endOfWeek },
+            date: { $gte: startOfWeek, $lte: now },
         });
 
         //tally spending into goal categories

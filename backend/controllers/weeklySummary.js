@@ -4,29 +4,26 @@ const getWeeklySummary = async (req, res) => {
     const { userId } = req.params;
     
     try {
-        //get current week dates
+        //use rolling 7-day windows so recent synced transactions always appear
         const now = new Date();
-        const startOfWeek = new Date(now);
-        startOfWeek.setDate(now.getDate() - now.getDay());
-        startOfWeek.setHours(0, 0, 0, 0);
-        
-        const endOfWeek = new Date(startOfWeek);
-        endOfWeek.setDate(startOfWeek.getDate() + 7);
-        
-        //get previous week dates
-        const startOfPrevWeek = new Date(startOfWeek);
-        startOfPrevWeek.setDate(startOfWeek.getDate() - 7);
-        
-        //fetch this week's transactions
+
+        const startOfThisWeek = new Date(now);
+        startOfThisWeek.setDate(now.getDate() - 6);
+        startOfThisWeek.setHours(0, 0, 0, 0);
+
+        const startOfPrevWeek = new Date(startOfThisWeek);
+        startOfPrevWeek.setDate(startOfThisWeek.getDate() - 7);
+
+        //fetch this week's transactions (last 7 days)
         const thisWeekTransactions = await Transaction.find({
             owner: userId,
-            date: { $gte: startOfWeek, $lt: endOfWeek }
+            date: { $gte: startOfThisWeek, $lte: now }
         });
-        
-        //fetch last week's transactions
+
+        //fetch previous 7-day window for comparison
         const lastWeekTransactions = await Transaction.find({
             owner: userId,
-            date: { $gte: startOfPrevWeek, $lt: startOfWeek }
+            date: { $gte: startOfPrevWeek, $lt: startOfThisWeek }
         });
         
         //calculate this week's totals
@@ -60,7 +57,7 @@ const getWeeklySummary = async (req, res) => {
             });
         
         const summary = {
-            weekOf: startOfWeek,
+            weekOf: startOfThisWeek,
             thisWeek: {
                 income: thisWeekIncome,
                 expenses: thisWeekExpenses,
