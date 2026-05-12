@@ -761,37 +761,12 @@ const handleSaveGoals = async () => {
                   Spending by Category
                 </Text>
 
-                {Object.keys(
-                  summary.thisWeek.byCategory || {}
-                ).length === 0 ? (
+                {Object.keys(summary.thisWeek.byCategory || {}).length === 0 ? (
                   <Text style={styles.loadingText}>
                     No categorized spending available.
                   </Text>
                 ) : (
-                  Object.entries(
-                    summary.thisWeek.byCategory || {}
-                  ).map(([category, amount]) => (
-                    <View
-                      key={category}
-                      style={styles.summaryRow}
-                    >
-                      <Text
-                        style={styles.categoryLabel}
-                      >
-                        {category}
-                      </Text>
-
-                      <Text
-                        style={styles.summaryValue}
-                      >
-                        $
-                        {Number(amount).toFixed(2)}
-                      </Text>
-                    </View>
-                  ))
-                )}
-                <Text style={styles.cardTitle}>Spending by Category</Text>
-                
+                  <>
                 {/* Donut Chart */}
                 {renderDonutChart()}
 
@@ -810,6 +785,8 @@ const handleSaveGoals = async () => {
                     </View>
                   ))}
                 </View>
+                  </>
+                )}
               </View>
 
               <View style={styles.card}>
